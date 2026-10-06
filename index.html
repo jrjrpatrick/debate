@@ -1801,9 +1801,12 @@ async function openRoom(){
 async function reopen(code){ const r = await store.getRoom(code); if(!r) return toast('그 방은 이미 지워졌어요'); if(r.hostUid !== UID) return toast('이 기기에서 연 방이 아니에요'); enter(code, true); }
 function enter(code, host){
   ROOM = code; IS_HOST = host; VIEW = host ? 'host' : 'stu'; R = null;
+  // 방에 새로 들어갈 때마다 진행 소식·이전 방 기록을 비운다
+  FEED.length = 0; P = {}; V = {}; let firstSnap = true; lastPhase = null; sheet = null; peek = false; clearTimeout(autoT);
+  for(const k in MOTION) delete MOTION[k];
   if(unwatch) unwatch();
   unwatch = store.watch(code, (room, ps, vs) => {
-    const prevP = P; R = room; P = ps || {}; V = vs || {};
+    const prevP = firstSnap ? null : P; firstSnap = false; R = room; P = ps || {}; V = vs || {};
     if(!R){ if(VIEW === 'stu'){ app.innerHTML = '<div class="card result-big"><h1>수업이 끝났습니다</h1><p class="muted">선생님이 방을 정리했어요.</p></div>'; } return; }
     document.body.dataset.map = mapKey(R.map);
     if(IS_HOST) hostDuties(prevP);
