@@ -2831,6 +2831,24 @@ function ladQ0(m){
   if(MODE() === 'scale') return `왜 ${m.score}점이야?`;
   const l = String(sideName(m.team)).trim(); return /다$/.test(l) ? `왜 ${l}고 생각해?` : `왜 ‘${l}’이야?`;
 }
+// '왜' 사다리 → 근거: 맨 아래 대답부터 거꾸로 잇는다. 앞쪽은 이어 주는 말(~라, ~해서), 맨 끝은 '~기'
+function ladClean(x){ return String(x || '').trim().replace(/[.!?。…~]+$/, '').trim(); }
+// '역사니까'처럼 받침 없는 이름씨 뒤의 '니까'(=이니까)인지 어림잡기 (흔한 움직씨·그림씨 끝 글자는 빼고)
+const VSTEM = '으하되가오보주크쁘프르치내해서나자쓰따타파차뜨끄모두추우배세키기리시이지개래새매떼베어여와워';
+function nounNikka(x){ const m = x.match(/(.)니까$/); if(!m) return false; const c = m[1].charCodeAt(0); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 === 0 && !VSTEM.includes(m[1]); }
+function ladLink(x){ x = ladClean(x);
+  if(nounNikka(x)) return x.replace(/니까$/, '라');
+  if(/이니까$/.test(x)) return x.replace(/이니까$/, '이라');
+  if(/(있|없)으니까$/.test(x)) return x.replace(/으니까$/, '어서');
+  if(/하니까$/.test(x)) return x.replace(/하니까$/, '해서');
+  if(/되니까$/.test(x)) return x.replace(/되니까$/, '돼서');
+  return x; }
+function ladGi(x){ x = ladClean(x);
+  if(/기$/.test(x)) return x;
+  if(nounNikka(x)) return x.replace(/니까$/, '이기');
+  return x.replace(/이니까$/, '이기').replace(/으니까$/, '기').replace(/니까$/, '기').replace(/이다$/, '이기').replace(/(있|없)다$/, '$1기'); }
+function ladReason(vals, L){ const v = [...Array(L)].map((_, i) => ladClean(vals[i])).filter(Boolean); if(!v.length) return '';
+  const r = v.slice().reverse(); return r.slice(0, -1).map(ladLink).concat([ladGi(r[r.length - 1])]).join(' '); }
 function tipHTML(m){
   const L = AC().ladder;
   let lad = '';
@@ -2838,15 +2856,15 @@ function tipHTML(m){
     for(; k < L; k++){ if(k > 0 && !String(v[k-1] || '').trim()) break;
       rows += `<div class="lq">${k + 1}단계 · ${k === 0 ? esc(ladQ0(m)) : `왜 ‘${esc(String(v[k-1]).trim())}’?`}</div><input class="t" data-lad="${k}" maxlength="80" placeholder="${k === 0 ? '예) 역사니까' : '예) 잊으면 또 당할 수 있으니까'}" value="${esc(v[k] || '')}">`; }
     const done = v.length >= L && [...Array(L)].every((_, i) => String(v[i] || '').trim());
-    const last = done ? String(v[L-1]).trim() : '';
+    const last = done ? ladReason(v, L) : '';
     lad = `<div class="ladder"><div class="mini muted">꼬리에 꼬리를 무는 질문에 한 단계씩 답해 보세요.</div>${rows}
-      ${done ? `<div class="ladend"><div>마지막 대답이 근거가 돼요 → <b>${esc(last)}</b></div>
-        <div class="mini" style="margin-top:4px">글을 길게 쓰고 싶으면 거꾸로 이어 써 보세요: <b>${esc([...v.slice(0, L)].reverse().map(s => String(s).trim()).join(' ← '))}</b></div>
-        <button class="btn sm pri" id="ladUse" style="margin-top:6px">마지막 대답을 근거 칸에 넣기</button> <span class="mini muted">넣은 뒤 ‘~기’로 끝나게 다듬어 주세요</span></div>`
+      ${done ? `<div class="ladend"><div class="mini">맨 아래 대답부터 <b>거꾸로</b> 이으면 근거가 돼요: ${esc([...v.slice(0, L)].reverse().map(s => ladClean(s)).join(' ← '))}</div>
+        <div style="margin-top:4px">→ <i>그 이유는 <b>${esc(last)}</b> 때문이다.</i></div>
+        <button class="btn sm pri" id="ladUse" style="margin-top:6px">거꾸로 이은 말을 근거 칸에 넣기</button> <span class="mini muted">넣은 뒤 어색한 곳을 다듬어 주세요</span></div>`
         : `<button class="btn sm" id="ladNext" style="margin-top:6px">다음 질문 ▶</button>`}</div>`; }
   return `<div class="tipbox"><b>꼬리에 꼬리를 무는 질문 (‘왜’ 사다리)</b><br>
-    ① 내 주장에 “왜?”라고 묻고 짧게 답해요.<br>② 그 대답에 또 “왜?”라고 물어요.<br>③ <b>마지막 대답이 근거</b>가 돼요. 글을 길게 쓰고 싶으면 사다리의 말을 거꾸로 이어 쓰면 돼요.
-    <div class="mini muted" style="margin-top:4px">예시) 보전해야 해. → 왜? → 역사니까. → 왜 역사면 남겨야 해? → 잊으면 또 당할 수 있으니까.<br>→ <i>삼전도비를 보전해야 한다. 그 이유는 역사는 잊으면 또 당할 수 있기 때문이다.</i></div>
+    ① 내 주장에 “왜?”라고 묻고 짧게 답해요.<br>② 그 대답에 또 “왜?”라고 물어요.<br>③ <b>맨 아래 대답부터 거꾸로 이으면</b> 근거가 돼요.
+    <div class="mini muted" style="margin-top:4px">예시) 철거해야 해. → 왜 철거해야 해? → 굴욕적이니까. → 왜 굴욕적이야? → 패배한 기록이니까.<br>→ 거꾸로 이으면: <i>그 이유는 패배한 기록이라 굴욕적이기 때문이다.</i></div>
     ${WIZ.lad ? '' : '<button class="btn sm" id="wLad" style="margin-top:6px">그래도 잘 모르겠어요</button>'}</div>${lad}`;
 }
 function evidStepHTML(m){
@@ -2944,10 +2962,10 @@ function bindWiz(st){
   if($('ladNext')) $('ladNext').onclick = () => { readWiz(); const v = WIZ.lad.vals, k = v.findIndex(x => !String(x || '').trim()); const filled = k === -1 ? v.length : k;
     if(!String(v[filled - 1] || '').trim() && filled === 0) return toast('먼저 첫 질문에 답해 주세요'); drawWiz(); const f = d.querySelector(`[data-lad="${filled}"]`); if(f) f.focus(); };
   d.querySelectorAll('[data-lad]').forEach(el => el.onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); if($('ladNext')) $('ladNext').click(); } });
-  if($('ladUse')) $('ladUse').onclick = () => { readWiz(); const L = AC().ladder, last = String(WIZ.lad.vals[L - 1] || '').trim().replace(/이니까$/, '이기').replace(/으니까$/, '기').replace(/니까$/, '기');
+  if($('ladUse')) $('ladUse').onclick = () => { readWiz(); const L = AC().ladder, last = ladReason(WIZ.lad.vals, L);
     const cand = WIZ.data.reasons.filter(r => !picked(r.pick)), slot = cand.find(r => !cleanEnd(r.body)) || cand[0];
     if(!slot) return toast('고른 근거가 있어요 — ‘기타’를 눌러야 직접 쓸 수 있어요');
-    slot.pick = -1; slot.body = last; drawWiz(); toast('근거 칸에 넣었어요 — ‘~기’로 끝나게 다듬어 주세요'); };
+    slot.pick = -1; slot.body = last; drawWiz(); toast('근거 칸에 넣었어요 — 어색한 곳을 다듬어 주세요'); };
 }
 async function submitWiz(){
   readWiz();
