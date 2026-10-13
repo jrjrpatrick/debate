@@ -1526,6 +1526,9 @@ label.qa{display:block;background:#fff;border-radius:8px;padding:6px 8px;margin:
 .lenc{font-size:12px;color:var(--bad, #E03131);margin:-2px 0 6px;text-align:right}
 .lenc.ok{color:#2B8A3E}
 .lenc.ok::before{content:'✔ '}
+
+.lenset{margin:8px 0 6px;padding:6px 8px;background:#F8F9FA;border-radius:10px}
+.lenset input.num{width:64px;padding:4px 6px;margin:0 2px;text-align:right}
 </style>
 </head>
 <body data-map="spring">
@@ -1828,7 +1831,7 @@ function posX(team, room){
 }
 
 /* ───────── 의견 쓰기 설정 (교사가 방을 만들 때 정함) ───────── */
-const ARG0 = {ev:false, cr:false, nR:1, nE:1, how:'free', reasons:[], evidences:[], qs:[], qAll:true, ladder:2};
+const ARG0 = {ev:false, cr:false, nR:1, nE:1, how:'free', reasons:[], evidences:[], qs:[], qAll:true, ladder:2, minQ:10, minR:15, minE:15, minC:15, minRb:15};   // min*: 띄어쓰기 빼고 이 글자 수보다 길게
 const AC = () => ({...ARG0, ...((R && R.arg) || {})});
 const HOWS = ['free', 'pick', 'ask'];
 const ePickOn = (a = AC()) => a.how !== 'free' && arr(a.evidences).length > 0;   // 증거를 목록에서 고르는가
@@ -1923,7 +1926,7 @@ function render(){
 function mockBanner(){ return store.mock ? '<div class="banner">체험 모드 — Firebase 설정 전이라 <b>이 브라우저 안에서만</b> 작동합니다. 같은 브라우저의 다른 탭으로 학생 입장을 시험해 볼 수 있어요.</div>' : ''; }
 
 /* ───────── 홈 ───────── */
-const APP_VER = '2026-10-13 ⑧';   // 화면에 보이는 판 번호 — GitHub에 올린 파일이 최신인지 확인용
+const APP_VER = '2026-10-13 ⑨';   // 화면에 보이는 판 번호 — GitHub에 올린 파일이 최신인지 확인용
 function homeView(){
   const map = document.body.dataset.map;
   app.innerHTML = `${mockBanner()}
@@ -2087,6 +2090,14 @@ function drawArgBox(){
       <label class="mini">근거 개수 <select id="aNR">${[1,2,3].map(v => `<option ${a.nR==v?'selected':''}>${v}</option>`).join('')}</select></label>
       <label class="mini" ${a.ev?'':'style="opacity:.45"'}>근거 하나당 증거 개수 <select id="aNE" ${a.ev?'':'disabled'}>${[1,2].map(v => `<option ${a.nE==v?'selected':''}>${v}</option>`).join('')}</select></label>
       <label class="mini">"왜" 사다리 단계 <select id="aLd">${[2,3,4,5].map(v => `<option ${a.ladder==v?'selected':''}>${v}</option>`).join('')}</select></label></div>
+    <div class="lenset"><b class="mini">글자 수 기준</b> <span class="mini muted">— 띄어쓰기 빼고 <b>이 숫자보다 길게</b> 써야 다음 단계로 넘어가요 (0이면 제한 없음)</span>
+      <div class="row" style="gap:10px;margin-top:4px;flex-wrap:wrap">
+        <label class="mini" ${a.how === 'ask' ? '' : 'style="opacity:.45"'}>생각을 여는 질문의 답 <input type="number" class="t num" id="lQ" min="0" max="200" value="${a.minQ}">자</label>
+        <label class="mini">근거(이유) <input type="number" class="t num" id="lR" min="0" max="200" value="${a.minR}">자</label>
+        <label class="mini" ${a.ev ? '' : 'style="opacity:.45"'}>증거(사례) <input type="number" class="t num" id="lE" min="0" max="200" value="${a.minE}">자</label>
+        <label class="mini" ${a.cr ? '' : 'style="opacity:.45"'}>예상 반론 <input type="number" class="t num" id="lC" min="0" max="200" value="${a.minC}">자</label>
+        <label class="mini" ${a.cr ? '' : 'style="opacity:.45"'}>반박 <input type="number" class="t num" id="lRb" min="0" max="200" value="${a.minRb}">자</label></div>
+      <div class="mini muted">예상 반론·반박은 두 칸(내용 + 왜냐하면)을 합쳐서 셉니다. 선생님 목록에서 고른 근거·증거에는 적용하지 않아요.</div></div>
     <div class="mini muted">문장 틀: 주장 → 그 이유는 ~ 때문이다. → 이는 ~는 사실(“~”라는 기록)을 통해 알 수 있다. → 물론 ~고 생각하는 사람도 있을 것이다. → 반박(① 정면 / ② 인정 후, 학생이 선택)</div>
     <b style="display:block;margin-top:12px">쓰기 방식</b>
     <label class="mini" style="display:block;margin-top:4px"><input type="radio" name="aHow" value="free" ${a.how==='free'?'checked':''}> ① 학생이 모든 요소를 직접 쓰기</label>
@@ -2139,6 +2150,8 @@ function readCF(){
   if($('aEv')){ const a = CF.arg; a.ev = $('aEv').checked; a.cr = $('aCr').checked; a.nR = +v('aNR'); a.nE = +v('aNE'); a.ladder = +v('aLd');
     const h = document.querySelector('input[name="aHow"]:checked'); a.how = h && HOWS.includes(h.value) ? h.value : 'free';
     if(!Array.isArray(a.qs)) a.qs = []; if(a.qAll == null) a.qAll = true;
+    const numv = (id, d) => { const x = $(id) ? parseInt($(id).value, 10) : NaN; return isNaN(x) ? d : Math.max(0, Math.min(200, x)); };
+    a.minQ = numv('lQ', a.minQ ?? 10); a.minR = numv('lR', a.minR ?? 15); a.minE = numv('lE', a.minE ?? 15); a.minC = numv('lC', a.minC ?? 15); a.minRb = numv('lRb', a.minRb ?? 15);
     const qa = document.querySelector('input[name="qAll"]:checked'); if(qa) a.qAll = qa.value === '1';
     if($('qList')) a.qs = [...document.querySelectorAll('#qList .lrow')].map(r => ({q:r.querySelector('.qTx').value.trim()}));
     if($('rList')) a.reasons = [...document.querySelectorAll('#rList .lrow')].map(r => ({text:r.querySelector('.rTx').value.trim(), side:r.querySelector('.rSd').value}));
@@ -2166,7 +2179,8 @@ async function openRoom(){
   const how = HOWS.includes(a.how) ? a.how : 'free';
   const arg = {ev:!!a.ev, cr:!!a.cr, nR:+a.nR || 1, nE:+a.nE || 1, ladder:+a.ladder || 2, how,
     reasons: how === 'pick' ? arr(a.reasons).filter(r => r.text) : [], evidences: how !== 'free' && a.ev ? arr(a.evidences).filter(e => e.text) : [],
-    qs: how === 'ask' ? arr(a.qs).filter(q => q.q).map(q => ({q:q.q})) : [], qAll: a.qAll !== false};
+    qs: how === 'ask' ? arr(a.qs).filter(q => q.q).map(q => ({q:q.q})) : [], qAll: a.qAll !== false,
+    minQ:a.minQ ?? 10, minR:a.minR ?? 15, minE:a.minE ?? 15, minC:a.minC ?? 15, minRb:a.minRb ?? 15};
   if(how === 'pick' && !arg.reasons.length) return toast('고르기 방식이면 근거 목록을 하나 이상 써 주세요');
   if(how === 'ask' && !arg.qs.length) return toast('질문 방식이면 생각을 여는 질문을 하나 이상 써 주세요');
   if(arg.how === 'pick' && arg.ev && !arg.evidences.length) return toast('고르기 방식이면 증거 목록도 하나 이상 써 주세요');
@@ -2937,44 +2951,46 @@ function previewStepHTML(m){
     <div class="mini muted" style="margin-top:8px">아직 제출되지 않았어요. [스스로 점검하기]에서 점검을 끝까지 마쳐야 제출됩니다. 고칠 곳이 있으면 [이전]으로 돌아가세요.</div>`;
 }
 // 글자 수 기준 (띄어쓰기 빼고 센다): 질문 답은 10자 초과, 근거·증거·반론·반박은 20자 초과
-const MINQ = 10, MINT = 20;
+const LIM = () => { const a = AC(), n = (v, d) => { v = parseInt(v, 10); return isNaN(v) ? d : Math.max(0, v); };   // 교사가 방 만들 때 정한 기준
+  return {q:n(a.minQ, 10), r:n(a.minR, 15), e:n(a.minE, 15), c:n(a.minC, 15), rb:n(a.minRb, 15)}; };
 const nsLen = x => String(x || '').replace(/\s/g, '').length;
 function stepError(st){
   const a = AC(), D = WIZ.data, m = wm(), L = s => cleanEnd(s).length;
   if(st === 'think'){ const qs = myQs(m.team, UID); if(!qs.length) return '';
-    const got = qs.filter(q => nsLen(D.qa[q.i]) > MINQ).length;
-    const short = qs.find(q => nsLen(D.qa[q.i]) > 0 && nsLen(D.qa[q.i]) <= MINQ);
-    if(short) return `질문의 답은 띄어쓰기 빼고 ${MINQ}자보다 길게 써 주세요 (지금 ${nsLen(D.qa[short.i])}자) — “${short.q.slice(0, 20)}${short.q.length > 20 ? '…' : ''}”`;
+    const got = qs.filter(q => nsLen(D.qa[q.i]) > LIM().q).length;
+    const short = qs.find(q => nsLen(D.qa[q.i]) > 0 && nsLen(D.qa[q.i]) <= LIM().q);
+    if(short) return `질문의 답은 띄어쓰기 빼고 ${LIM().q}자보다 길게 써 주세요 (지금 ${nsLen(D.qa[short.i])}자) — “${short.q.slice(0, 20)}${short.q.length > 20 ? '…' : ''}”`;
     if(a.qAll && got < qs.length){ WIZ.qn = qs.length; return `질문 ${qs.length}개에 모두 답해 주세요 (지금 ${got}개)`; }
-    if(!got) return `질문에 하나 이상 답해 주세요 (띄어쓰기 빼고 ${MINQ}자보다 길게)`;
+    if(!got) return `질문에 하나 이상 답해 주세요 (띄어쓰기 빼고 ${LIM().q}자보다 길게)`;
     return ''; }
   if(st === 'side') return (MODE() === 'scale' ? m.score == null : !m.team) ? (MODE() === 'scale' ? '점수 자리를 골라 주세요' : '입장을 골라 주세요') : '';
   if(st === 'reason'){ for(const [i, r] of D.reasons.entries()){ const n = a.nR > 1 ? `근거 ${i + 1}: ` : '';
       if(a.how === 'pick' && r.pick == null) return n + '근거를 고르거나 ‘기타’를 눌러 직접 써 주세요';
-      if(L(cleanReason(r.body)) < 4) return n + '근거(이유)를 조금 더 써 주세요';
-      if(!picked(r.pick) && nsLen(cleanReason(r.body)) <= MINT) return n + `근거(이유)를 띄어쓰기 빼고 ${MINT}자보다 길게 써 주세요 (지금 ${nsLen(cleanReason(r.body))}자)`;
+      if(L(cleanReason(r.body)) < 1) return n + '근거(이유)를 써 주세요';
+      if(!picked(r.pick) && nsLen(cleanReason(r.body)) <= LIM().r) return n + `근거(이유)를 띄어쓰기 빼고 ${LIM().r}자보다 길게 써 주세요 (지금 ${nsLen(cleanReason(r.body))}자)`;
       if(/다$/.test(cleanReason(r.body))) return n + '근거는 ‘~기’로 끝나게 써 주세요 (예: 있다 → 있기)'; } return ''; }
   if(st === 'evid'){ for(const [i, g] of D.evid.entries()) for(const [j, e] of g.entries()){ const n = `근거 ${i + 1}의 증거${a.nE > 1 ? ' ' + (j + 1) : ''}: `;
       if(ePickOn(a) && e.pick == null) return n + '증거를 고르거나 ‘기타’를 눌러 직접 써 주세요';
-      if(L(e.body) < 4) return n + '증거를 조금 더 써 주세요';
-      if(!picked(e.pick) && nsLen(e.body) <= MINT) return n + `증거(사례)를 띄어쓰기 빼고 ${MINT}자보다 길게 써 주세요 (지금 ${nsLen(e.body)}자)`;
+      if(L(e.body) < 1) return n + '증거를 써 주세요';
+      if(!picked(e.pick) && nsLen(e.body) <= LIM().e) return n + `증거(사례)를 띄어쓰기 빼고 ${LIM().e}자보다 길게 써 주세요 (지금 ${nsLen(e.body)}자)`;
       if(e.type !== 'record' && !/다$/.test(cleanFact(e.body))) return n + '역사적 사실은 ‘~다’로 끝나게 써 주세요';
-      if(L(e.src) < 2) return n + '출처를 써 주세요'; } return ''; }
-  if(st === 'counter'){ if(L(D.counter.a) < 4) return '예상 반론을 써 주세요'; if(L(D.counter.b) < 3) return '반론의 이유(왜냐하면 ~)도 써 주세요';
-    const cn = nsLen(D.counter.a) + nsLen(D.counter.b); if(cn <= MINT) return `예상 반론(두 칸 합쳐서)을 띄어쓰기 빼고 ${MINT}자보다 길게 써 주세요 (지금 ${cn}자)`;
-    if(!D.rebut.type) return '반박 방법 ①, ② 중 하나를 골라 주세요'; if(L(D.rebut.a) < 3) return '반박을 써 주세요'; if(L(D.rebut.b) < 3) return '반박의 이유(왜냐하면 ~)도 써 주세요';
-    const rn = nsLen(D.rebut.a) + nsLen(D.rebut.b); if(rn <= MINT) return `반박(두 칸 합쳐서)을 띄어쓰기 빼고 ${MINT}자보다 길게 써 주세요 (지금 ${rn}자)`; return ''; }
+      if(L(e.src) < 1) return n + '출처를 써 주세요'; } return ''; }
+  if(st === 'counter'){ if(L(D.counter.a) < 1) return '예상 반론을 써 주세요'; if(L(D.counter.b) < 1) return '반론의 이유(왜냐하면 ~)도 써 주세요';
+    const cn = nsLen(D.counter.a) + nsLen(D.counter.b); if(cn <= LIM().c) return `예상 반론(두 칸 합쳐서)을 띄어쓰기 빼고 ${LIM().c}자보다 길게 써 주세요 (지금 ${cn}자)`;
+    if(!D.rebut.type) return '반박 방법 ①, ② 중 하나를 골라 주세요'; if(L(D.rebut.a) < 1) return '반박을 써 주세요'; if(L(D.rebut.b) < 1) return '반박의 이유(왜냐하면 ~)도 써 주세요';
+    const rn = nsLen(D.rebut.a) + nsLen(D.rebut.b); if(rn <= LIM().rb) return `반박(두 칸 합쳐서)을 띄어쓰기 빼고 ${LIM().rb}자보다 길게 써 주세요 (지금 ${rn}자)`; return ''; }
   return '';
 }
 function lenCounters(d){   // 글자 수 표시: 칸 아래에 '띄어쓰기 빼고 n자 / 기준' 을 실시간으로 보여 준다
   const val = f => { const el = d.querySelector(`[data-f="${f}"]`); return el ? el.value : ''; };
-  const add = (after, key, min, fields) => { if(!after || after.nextElementSibling && after.nextElementSibling.dataset.len === key) return;
+  const add = (after, key, min, fields) => { if(!after || !(min > 0) || after.nextElementSibling && after.nextElementSibling.dataset.len === key) return;
     const c = document.createElement('div'); c.className = 'lenc'; c.dataset.len = key; c.dataset.min = min; c.dataset.fields = fields.join(','); after.insertAdjacentElement('afterend', c); };
   d.querySelectorAll('textarea[data-f]:not([readonly])').forEach(el => { const f = el.dataset.f, k = f.split('.')[0];
-    if(k === 'q') add(el, f, MINQ, [f]);
-    else if(k === 'r' || k === 'e') add(el.closest('.frame') || el, f, MINT, [f]);
-    else if(f === 'cb') add(el.closest('.frame'), 'c', MINT, ['ca', 'cb']);
-    else if(f === 'rb') add(el.closest('.frame'), 'rbt', MINT, ['ra', 'rb']); });
+    const L = LIM();
+    if(k === 'q') add(el, f, L.q, [f]);
+    else if(k === 'r' || k === 'e') add(el.closest('.frame') || el, f, k === 'r' ? L.r : L.e, [f]);
+    else if(f === 'cb') add(el.closest('.frame'), 'c', L.c, ['ca', 'cb']);
+    else if(f === 'rb') add(el.closest('.frame'), 'rbt', L.rb, ['ra', 'rb']); });
   const upd = () => d.querySelectorAll('.lenc').forEach(c => { const n = c.dataset.fields.split(',').reduce((t, f) => t + nsLen(val(f)), 0), min = +c.dataset.min;
     c.textContent = `띄어쓰기 빼고 ${n}자 / ${min}자보다 길게${c.dataset.fields.includes(',') ? ' (두 칸 합쳐서)' : ''}`; c.classList.toggle('ok', n > min); });
   upd(); d.querySelectorAll('textarea[data-f]').forEach(el => el.addEventListener('input', upd));
@@ -2984,14 +3000,14 @@ function bindWiz(st){
   $('wPrev').onclick = () => go(Math.max(0, WIZ.i - 1));
   $('wClose').onclick = () => { readWiz(); closeWiz(); toast('쓰던 글은 이 기기에 남아 있어요. 다시 [내 의견 쓰기]를 누르세요.'); };
   if($('wNext')) $('wNext').onclick = () => { readWiz(); const er = stepError(st); if(er){ drawWiz(); return toast(er); }
-    if(st === 'think' && !AC().qAll && !WIZ.nudged){ const qs = myQs(wm().team, UID), got = qs.filter(q => nsLen(WIZ.data.qa[q.i]) > MINQ).length;
+    if(st === 'think' && !AC().qAll && !WIZ.nudged){ const qs = myQs(wm().team, UID), got = qs.filter(q => nsLen(WIZ.data.qa[q.i]) > LIM().q).length;
       if(got < qs.length){ WIZ.nudge = true; WIZ.nudged = true; drawWiz(); const t = $('nMore'); if(t) t.scrollIntoView({block:'center'}); return; } }
     WIZ.nudge = false; go(WIZ.i + 1); };
   if($('qNext')) $('qNext').onclick = () => { readWiz(); const qs = myQs(wm().team, UID), cur = qs[Math.min(WIZ.qn, qs.length) - 1];
-    if(cur && nsLen(WIZ.data.qa[cur.i]) <= MINQ) return toast(`이 질문의 답을 띄어쓰기 빼고 ${MINQ}자보다 길게 써 주세요 (지금 ${nsLen(WIZ.data.qa[cur.i])}자)` + (AC().qAll ? '' : ' — 어려우면 건너뛰어도 돼요'));
+    if(cur && nsLen(WIZ.data.qa[cur.i]) <= LIM().q) return toast(`이 질문의 답을 띄어쓰기 빼고 ${LIM().q}자보다 길게 써 주세요 (지금 ${nsLen(WIZ.data.qa[cur.i])}자)` + (AC().qAll ? '' : ' — 어려우면 건너뛰어도 돼요'));
     WIZ.qn++; drawWiz(); const f = d.querySelector(`[data-f="q.${(qs[WIZ.qn - 1] || {}).i}"]`); if(f) f.focus(); };
   if($('qSkip')) $('qSkip').onclick = () => { readWiz(); const qs = myQs(wm().team, UID), cur = qs[Math.min(WIZ.qn, qs.length) - 1];
-    if(cur && nsLen(WIZ.data.qa[cur.i]) <= MINQ) WIZ.data.qa[cur.i] = '';   // 건너뛴 질문의 짧은 답은 비운다
+    if(cur && nsLen(WIZ.data.qa[cur.i]) <= LIM().q) WIZ.data.qa[cur.i] = '';   // 건너뛴 질문의 짧은 답은 비운다
     WIZ.qn++; drawWiz(); };
   if($('nMore')) $('nMore').onclick = () => { readWiz(); WIZ.nudge = false; WIZ.qn = myQs(wm().team, UID).length; drawWiz(); const e = [...d.querySelectorAll('[data-f^="q."]')].find(x => !x.value.trim()); if(e) e.focus(); };
   if($('nGo')) $('nGo').onclick = () => { readWiz(); WIZ.nudge = false; go(WIZ.i + 1); };
