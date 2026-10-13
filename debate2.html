@@ -1521,6 +1521,11 @@ label.qa{display:block;background:#fff;border-radius:8px;padding:6px 8px;margin:
 .tok .bub.hb{pointer-events:auto;cursor:pointer}
 .tok .bub.hb:hover{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,183,5,.45)}
 #bubTip{position:fixed;z-index:70;background:#fff;border:2px solid var(--ink);border-radius:12px;padding:8px 11px;font-size:14px;line-height:1.6;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none;white-space:normal;word-break:keep-all}
+
+/* 글자 수 표시 */
+.lenc{font-size:12px;color:var(--bad, #E03131);margin:-2px 0 6px;text-align:right}
+.lenc.ok{color:#2B8A3E}
+.lenc.ok::before{content:'✔ '}
 </style>
 </head>
 <body data-map="spring">
@@ -1918,7 +1923,7 @@ function render(){
 function mockBanner(){ return store.mock ? '<div class="banner">체험 모드 — Firebase 설정 전이라 <b>이 브라우저 안에서만</b> 작동합니다. 같은 브라우저의 다른 탭으로 학생 입장을 시험해 볼 수 있어요.</div>' : ''; }
 
 /* ───────── 홈 ───────── */
-const APP_VER = '2026-10-13 ⑦';   // 화면에 보이는 판 번호 — GitHub에 올린 파일이 최신인지 확인용
+const APP_VER = '2026-10-13 ⑧';   // 화면에 보이는 판 번호 — GitHub에 올린 파일이 최신인지 확인용
 function homeView(){
   const map = document.body.dataset.map;
   app.innerHTML = `${mockBanner()}
@@ -2804,7 +2809,7 @@ function drawWiz(){
     <div class="row" style="margin-top:14px"><button class="btn" id="wPrev" ${WIZ.i === 0 ? 'disabled' : ''}>← 이전</button><div class="grow"></div><button class="btn sm" id="wClose">닫기 (쓰던 글은 이 기기에 남아요)</button>
       ${st === 'preview' ? '<button class="btn pri" id="wSubmit">스스로 점검하기 →</button>' : '<button class="btn pri" id="wNext">다음 →</button>'}</div></div>`;
   d.querySelector('.card').scrollTop = keepScroll;
-  noPaste(d); bindWiz(st);
+  noPaste(d); bindWiz(st); lenCounters(d);
 }
 function sideStepHTML(m){
   if(MODE() === 'scale'){ const sc = SC(); let b = '';
@@ -2931,39 +2936,63 @@ function previewStepHTML(m){
     <div class="legend"><span class="p reason">근거</span> <span class="p evid">증거</span> <span class="p counter">반론</span> <span class="p rebut">반박</span></div>
     <div class="mini muted" style="margin-top:8px">아직 제출되지 않았어요. [스스로 점검하기]에서 점검을 끝까지 마쳐야 제출됩니다. 고칠 곳이 있으면 [이전]으로 돌아가세요.</div>`;
 }
+// 글자 수 기준 (띄어쓰기 빼고 센다): 질문 답은 10자 초과, 근거·증거·반론·반박은 20자 초과
+const MINQ = 10, MINT = 20;
+const nsLen = x => String(x || '').replace(/\s/g, '').length;
 function stepError(st){
   const a = AC(), D = WIZ.data, m = wm(), L = s => cleanEnd(s).length;
   if(st === 'think'){ const qs = myQs(m.team, UID); if(!qs.length) return '';
-    const got = qs.filter(q => L(D.qa[q.i]) >= 2).length;
+    const got = qs.filter(q => nsLen(D.qa[q.i]) > MINQ).length;
+    const short = qs.find(q => nsLen(D.qa[q.i]) > 0 && nsLen(D.qa[q.i]) <= MINQ);
+    if(short) return `질문의 답은 띄어쓰기 빼고 ${MINQ}자보다 길게 써 주세요 (지금 ${nsLen(D.qa[short.i])}자) — “${short.q.slice(0, 20)}${short.q.length > 20 ? '…' : ''}”`;
     if(a.qAll && got < qs.length){ WIZ.qn = qs.length; return `질문 ${qs.length}개에 모두 답해 주세요 (지금 ${got}개)`; }
-    if(!got) return '질문에 하나 이상 답해 주세요';
+    if(!got) return `질문에 하나 이상 답해 주세요 (띄어쓰기 빼고 ${MINQ}자보다 길게)`;
     return ''; }
   if(st === 'side') return (MODE() === 'scale' ? m.score == null : !m.team) ? (MODE() === 'scale' ? '점수 자리를 골라 주세요' : '입장을 골라 주세요') : '';
   if(st === 'reason'){ for(const [i, r] of D.reasons.entries()){ const n = a.nR > 1 ? `근거 ${i + 1}: ` : '';
       if(a.how === 'pick' && r.pick == null) return n + '근거를 고르거나 ‘기타’를 눌러 직접 써 주세요';
       if(L(cleanReason(r.body)) < 4) return n + '근거(이유)를 조금 더 써 주세요';
+      if(!picked(r.pick) && nsLen(cleanReason(r.body)) <= MINT) return n + `근거(이유)를 띄어쓰기 빼고 ${MINT}자보다 길게 써 주세요 (지금 ${nsLen(cleanReason(r.body))}자)`;
       if(/다$/.test(cleanReason(r.body))) return n + '근거는 ‘~기’로 끝나게 써 주세요 (예: 있다 → 있기)'; } return ''; }
   if(st === 'evid'){ for(const [i, g] of D.evid.entries()) for(const [j, e] of g.entries()){ const n = `근거 ${i + 1}의 증거${a.nE > 1 ? ' ' + (j + 1) : ''}: `;
       if(ePickOn(a) && e.pick == null) return n + '증거를 고르거나 ‘기타’를 눌러 직접 써 주세요';
       if(L(e.body) < 4) return n + '증거를 조금 더 써 주세요';
+      if(!picked(e.pick) && nsLen(e.body) <= MINT) return n + `증거(사례)를 띄어쓰기 빼고 ${MINT}자보다 길게 써 주세요 (지금 ${nsLen(e.body)}자)`;
       if(e.type !== 'record' && !/다$/.test(cleanFact(e.body))) return n + '역사적 사실은 ‘~다’로 끝나게 써 주세요';
       if(L(e.src) < 2) return n + '출처를 써 주세요'; } return ''; }
   if(st === 'counter'){ if(L(D.counter.a) < 4) return '예상 반론을 써 주세요'; if(L(D.counter.b) < 3) return '반론의 이유(왜냐하면 ~)도 써 주세요';
-    if(!D.rebut.type) return '반박 방법 ①, ② 중 하나를 골라 주세요'; if(L(D.rebut.a) < 3) return '반박을 써 주세요'; if(L(D.rebut.b) < 3) return '반박의 이유(왜냐하면 ~)도 써 주세요'; return ''; }
+    const cn = nsLen(D.counter.a) + nsLen(D.counter.b); if(cn <= MINT) return `예상 반론(두 칸 합쳐서)을 띄어쓰기 빼고 ${MINT}자보다 길게 써 주세요 (지금 ${cn}자)`;
+    if(!D.rebut.type) return '반박 방법 ①, ② 중 하나를 골라 주세요'; if(L(D.rebut.a) < 3) return '반박을 써 주세요'; if(L(D.rebut.b) < 3) return '반박의 이유(왜냐하면 ~)도 써 주세요';
+    const rn = nsLen(D.rebut.a) + nsLen(D.rebut.b); if(rn <= MINT) return `반박(두 칸 합쳐서)을 띄어쓰기 빼고 ${MINT}자보다 길게 써 주세요 (지금 ${rn}자)`; return ''; }
   return '';
+}
+function lenCounters(d){   // 글자 수 표시: 칸 아래에 '띄어쓰기 빼고 n자 / 기준' 을 실시간으로 보여 준다
+  const val = f => { const el = d.querySelector(`[data-f="${f}"]`); return el ? el.value : ''; };
+  const add = (after, key, min, fields) => { if(!after || after.nextElementSibling && after.nextElementSibling.dataset.len === key) return;
+    const c = document.createElement('div'); c.className = 'lenc'; c.dataset.len = key; c.dataset.min = min; c.dataset.fields = fields.join(','); after.insertAdjacentElement('afterend', c); };
+  d.querySelectorAll('textarea[data-f]:not([readonly])').forEach(el => { const f = el.dataset.f, k = f.split('.')[0];
+    if(k === 'q') add(el, f, MINQ, [f]);
+    else if(k === 'r' || k === 'e') add(el.closest('.frame') || el, f, MINT, [f]);
+    else if(f === 'cb') add(el.closest('.frame'), 'c', MINT, ['ca', 'cb']);
+    else if(f === 'rb') add(el.closest('.frame'), 'rbt', MINT, ['ra', 'rb']); });
+  const upd = () => d.querySelectorAll('.lenc').forEach(c => { const n = c.dataset.fields.split(',').reduce((t, f) => t + nsLen(val(f)), 0), min = +c.dataset.min;
+    c.textContent = `띄어쓰기 빼고 ${n}자 / ${min}자보다 길게${c.dataset.fields.includes(',') ? ' (두 칸 합쳐서)' : ''}`; c.classList.toggle('ok', n > min); });
+  upd(); d.querySelectorAll('textarea[data-f]').forEach(el => el.addEventListener('input', upd));
 }
 function bindWiz(st){
   const d = $('wiz'), steps = wizSteps(), go = i => { readWiz(); WIZ.i = i; drawWiz(); };
   $('wPrev').onclick = () => go(Math.max(0, WIZ.i - 1));
   $('wClose').onclick = () => { readWiz(); closeWiz(); toast('쓰던 글은 이 기기에 남아 있어요. 다시 [내 의견 쓰기]를 누르세요.'); };
   if($('wNext')) $('wNext').onclick = () => { readWiz(); const er = stepError(st); if(er){ drawWiz(); return toast(er); }
-    if(st === 'think' && !AC().qAll && !WIZ.nudged){ const qs = myQs(wm().team, UID), got = qs.filter(q => cleanEnd(WIZ.data.qa[q.i]).length >= 2).length;
+    if(st === 'think' && !AC().qAll && !WIZ.nudged){ const qs = myQs(wm().team, UID), got = qs.filter(q => nsLen(WIZ.data.qa[q.i]) > MINQ).length;
       if(got < qs.length){ WIZ.nudge = true; WIZ.nudged = true; drawWiz(); const t = $('nMore'); if(t) t.scrollIntoView({block:'center'}); return; } }
     WIZ.nudge = false; go(WIZ.i + 1); };
   if($('qNext')) $('qNext').onclick = () => { readWiz(); const qs = myQs(wm().team, UID), cur = qs[Math.min(WIZ.qn, qs.length) - 1];
-    if(cur && cleanEnd(WIZ.data.qa[cur.i]).length < 2) return toast('이 질문에 먼저 답해 주세요' + (AC().qAll ? '' : ' (어려우면 건너뛰어도 돼요)'));
+    if(cur && nsLen(WIZ.data.qa[cur.i]) <= MINQ) return toast(`이 질문의 답을 띄어쓰기 빼고 ${MINQ}자보다 길게 써 주세요 (지금 ${nsLen(WIZ.data.qa[cur.i])}자)` + (AC().qAll ? '' : ' — 어려우면 건너뛰어도 돼요'));
     WIZ.qn++; drawWiz(); const f = d.querySelector(`[data-f="q.${(qs[WIZ.qn - 1] || {}).i}"]`); if(f) f.focus(); };
-  if($('qSkip')) $('qSkip').onclick = () => { readWiz(); WIZ.qn++; drawWiz(); };
+  if($('qSkip')) $('qSkip').onclick = () => { readWiz(); const qs = myQs(wm().team, UID), cur = qs[Math.min(WIZ.qn, qs.length) - 1];
+    if(cur && nsLen(WIZ.data.qa[cur.i]) <= MINQ) WIZ.data.qa[cur.i] = '';   // 건너뛴 질문의 짧은 답은 비운다
+    WIZ.qn++; drawWiz(); };
   if($('nMore')) $('nMore').onclick = () => { readWiz(); WIZ.nudge = false; WIZ.qn = myQs(wm().team, UID).length; drawWiz(); const e = [...d.querySelectorAll('[data-f^="q."]')].find(x => !x.value.trim()); if(e) e.focus(); };
   if($('nGo')) $('nGo').onclick = () => { readWiz(); WIZ.nudge = false; go(WIZ.i + 1); };
   d.querySelectorAll('[data-take]').forEach(b => b.onclick = () => { readWiz(); const i = +b.dataset.take, r = WIZ.data.reasons[i];
