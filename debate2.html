@@ -1351,7 +1351,6 @@ body[data-map="night"] .board::before{background:linear-gradient(90deg,rgba(76,1
 .tok.rep .av{background:linear-gradient(#FFE066,#F59F00);color:var(--ink)}
 .tok .crown{font-size:17px;line-height:1;margin-bottom:-1px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
 @keyframes wob{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
-.keyi{position:absolute;transform:translate(-50%,-50%);font-size:30px;z-index:4;filter:drop-shadow(0 0 8px rgba(255,212,59,.9)) drop-shadow(0 2px 2px rgba(0,0,0,.3));animation:bob 1.6s infinite}
 @keyframes bob{50%{transform:translate(-50%,-62%)}}
 .themes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .themes button{border:2.5px solid var(--line);background:#fff;border-radius:14px;padding:5px;font-size:12px;font-weight:700;display:flex;flex-direction:column;gap:4px;align-items:stretch}
@@ -1882,9 +1881,9 @@ function calc(){
   if(R.r3start){ ps.forEach(p => { const was = R.r3start[p.id];
     if(MODE() === 'scale'){ const s0 = (R.r3score || {})[p.id];
       if(s0 != null && p.score != null && p.score !== s0){ crossed.push(p); ind[p.id] = (ind[p.id]||0) + Math.abs(p.score - s0) * PT.movePt; }
-      if(was && p.team && p.team !== was && team[p.team] != null){ ind[p.id] += PT.cross; team[p.team] += PT.crossTeam * (R.key && R.key.team === p.team ? 2 : 1); }
+      if(was && p.team && p.team !== was && team[p.team] != null){ ind[p.id] += PT.cross; team[p.team] += PT.crossTeam; }
       return; }
-    if(was && p.team && p.team !== was){ crossed.push(p); ind[p.id] = (ind[p.id]||0) + PT.cross; if(team[p.team] != null) team[p.team] += PT.crossTeam * (R.key && R.key.team === p.team ? 2 : 1); } }); }
+    if(was && p.team && p.team !== was){ crossed.push(p); ind[p.id] = (ind[p.id]||0) + PT.cross; if(team[p.team] != null) team[p.team] += PT.crossTeam; } }); }
   return {ind, team, crossed};
 }
 
@@ -2161,7 +2160,7 @@ async function openRoom(){
   let code; for(let i=0;i<5;i++){ code = String(100000 + Math.floor(Math.random()*900000)); if(!(await store.getRoom(code))) break; }
   await store.createRoom(code, {topic:c.topic, mode, sides, scale, sideA, sideB, arg, grade:c.grade, cls:c.cls, subject:c.subject || '역사', split, anon:c.anon,
     hostUid:UID, map:document.body.dataset.map, phase:'write', stage:'ready', rEnd:0, createdAt:now(),
-    key:{x:10 + Math.round(Math.random()*80), y:45 + Math.round(Math.random()*40), team:null}, matches:[], mi:-1, res:{}, reveal:false, moves:{}, r3start:null, ord:0});
+    matches:[], mi:-1, res:{}, reveal:false, moves:{}, r3start:null, ord:0});
   ls.set('tg_myrooms', ls.get('tg_myrooms', []).filter(x => x !== code).concat([code]).slice(-10));
   saveCfg(code, c);
   CF = null;
@@ -2226,7 +2225,7 @@ async function join(){
   enter(code, false);
 }
 
-/* ───────── 교사가 맡는 일: 열쇠 주인, 옮기기 정리, 다시 들어온 학생 정리, 타이머 넘김 ───────── */
+/* ───────── 교사가 맡는 일: 옮기기 정리, 다시 들어온 학생 정리, 타이머 넘김 ───────── */
 let autoT = null;
 function hostDuties(prevP){
   const ps = players();
@@ -2238,9 +2237,6 @@ function hostDuties(prevP){
       if(R.r3start && R.r3start[old]) { patch['r3start.' + p.id] = R.r3start[old]; }
       if(R.r3score && R.r3score[old] != null) { patch['r3score.' + p.id] = R.r3score[old]; }
       if(Object.keys(patch).length) store.updateRoom(ROOM, patch); } });
-  // 황금열쇠 — 먼저 밟은 팀
-  if(R.key && !R.key.team){ const g = ps.filter(p => p.gotKey && p.team && p.team !== 'M').sort((a,b) => a.gotKey - b.gotKey)[0];
-    if(g){ store.updateRoom(ROOM, {'key.team': g.team, 'key.by': g.id}); feed(`${josa(showName(g),'이','가')} 황금열쇠를 주웠습니다 — ${sideName(g.team)} 팀의 3라운드 이동 점수 2배`); beep(988,.25,'triangle'); } }
   Object.entries(R.moves || {}).forEach(([id, t]) => { if(!P[id] || P[id].team === t) store.updateRoom(ROOM, {['moves.' + id]: {__op:'del'}}); });
   if(prevP){ ps.forEach(p => { const o = prevP[p.id];
       if(!o) { feed(`${josa(showName(p),'이','가')} 들어왔습니다`); beep(880,.06); }
@@ -2274,19 +2270,18 @@ function stuDuties(){
 /* ───────── 광장 그리기 ───────── */
 function boardHTML(){
   const {team} = calc(), mode = MODE();
-  const key = R.key && !R.key.team && R.phase !== 'r3' && R.phase !== 'end' ? `<div class="keyi" style="left:${R.key.x}%;top:${R.key.y}%" title="황금열쇠">🗝️</div>` : '';
   if(mode === 'multi'){
     const ks = sideKeys(), w = 100 / ks.length;
     return `<div class="zones">${ks.map(k => `<i class="z${k}"></i>`).join('')}</div>` + ks.slice(1).map((k, i) => `<div class="mid" style="left:${(i+1)*w}%"></div>`).join('') +
-      ks.map((k, i) => `<div class="lbl ${k} m" style="left:${i*w + w/2}%">${esc(sideName(k))}</div><div class="score ${k} m" style="left:${i*w + w/2}%">${team[k]}</div>`).join('') + key;
+      ks.map((k, i) => `<div class="lbl ${k} m" style="left:${i*w + w/2}%">${esc(sideName(k))}</div><div class="score ${k} m" style="left:${i*w + w/2}%">${team[k]}</div>`).join('');
   }
   if(mode === 'scale'){
     const mx = SC().max; let ticks = ''; for(let s = 0; s <= mx; s++) ticks += `<span style="left:${scoreX(s)}%">${s}</span>`;
     return `<div class="mid"></div><div class="lbl A">${esc(SC().left)}</div><div class="lbl B">${esc(SC().right)}</div>
-      <div class="score A">${team.A}</div><div class="score B">${team.B}</div><div class="stmt">${esc(SC().statement)}</div><div class="ruler">${ticks}</div>` + key;
+      <div class="score A">${team.A}</div><div class="score B">${team.B}</div><div class="stmt">${esc(SC().statement)}</div><div class="ruler">${ticks}</div>`;
   }
   return `<div class="mid"></div><div class="lbl A">${esc(sideName('A'))}</div><div class="lbl B">${esc(sideName('B'))}</div>
-    <div class="score A">${team.A}</div><div class="score B">${team.B}</div>` + key;
+    <div class="score A">${team.A}</div><div class="score B">${team.B}</div>`;
 }
 function tokInner(o){
   return (o.bub ? `<div class="bub">${esc(o.bub)}</div>` : '') + (o.unread ? '<div class="ex">!</div>' : '') + (o.crown ? '<div class="crown">👑</div>' : '') +
@@ -2377,7 +2372,6 @@ function hostView(){
       <div class="card"><div class="guide" id="guide">${guideText()}</div><div class="row" style="margin-top:10px;flex-direction:column;align-items:stretch" id="ctl"></div></div>
       <div class="card">${ks.map(k => `<div class="row" style="margin-bottom:6px"><b>${esc(sideName(k))}</b><span class="tag" style="background:var(--${k}2)">${teamOf(k).length}명 · ${team[k]}점</span></div>`).join('')}
         ${mode === 'scale' ? `<div class="row"><b>가운데</b><span class="tag">${teamOf('M').length}명</span></div>` : ''}
-        ${R.key && R.key.team ? `<div class="mini" style="margin-top:6px">🗝️ 황금열쇠: <b>${esc(sideName(R.key.team))}</b> 팀 (3라운드 이동 점수 2배)</div>` : ''}
         <div class="row" style="margin-top:10px">${R.anon ? `<button class="btn sm" id="peek">${peek ? '이름 가리기' : '이름 보기'}</button>` : ''}<button class="btn sm" id="snd">${SOUND ? '효과음 끄기' : '효과음 켜기'}</button></div>
         <div class="mini muted" style="margin-top:6px">${mode === 'scale' ? '캐릭터를 누르면 그 학생의 글을 봅니다.' : '캐릭터를 누르면 다른 편으로 옮깁니다(준비·1라운드).'}</div></div>
       <div class="card"><b>진행 소식</b><div class="feed" id="feed">${FEED.map(esc).join('<br>')}</div></div>
@@ -2653,7 +2647,6 @@ async function moveMe(e, board, m){
       if(R.phase === 'write' && m.arg) patch.text = composeText(m.arg, {...m, team:zone}); }
     patch.x = x;
   }
-  if(R.key && !R.key.team && !m.gotKey && Math.hypot(patch.x - R.key.x, (y - R.key.y) * .56) < 6 && R.phase !== 'r3'){ patch.gotKey = now(); toast('🗝️ 황금열쇠를 주웠어요! 우리 팀의 3라운드 이동 점수가 두 배'); }
   await store.updatePlayer(ROOM, UID, patch);
 }
 function onTokStu(p, m){
