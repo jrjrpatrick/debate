@@ -1441,11 +1441,12 @@ table.rec td:nth-child(-n+5),table.rec th:nth-child(-n+5){white-space:nowrap}
 .setbox select{font:inherit;padding:3px 6px;border-radius:8px;border:2px solid var(--line)}
 .lrow{display:grid;grid-template-columns:1fr 130px 40px;gap:6px;margin:6px 0;align-items:center}
 .lrow.ev{grid-template-columns:110px 1fr 140px 120px 40px}
+.lrow.vl{grid-template-columns:110px 1fr 1.4fr 120px 40px}
 .lrow .t{padding:7px 9px}
 .lrow2{display:grid;grid-template-columns:30px 200px 1fr;gap:6px;margin:6px 0;align-items:center}
 .lrow2 .t{padding:8px 10px}
 .dot{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:#fff;font-weight:800}
-@media (max-width:700px){.lrow,.lrow.ev,.lrow2{grid-template-columns:1fr}}
+@media (max-width:700px){.lrow,.lrow.ev,.lrow.vl,.lrow2{grid-template-columns:1fr}}
 
 /* ───── 의견 쓰기 ───── */
 .modal .card.wiz,.modal .card.diagc{max-width:980px}
@@ -1502,6 +1503,13 @@ table.rec td:nth-child(-n+5),table.rec th:nth-child(-n+5){white-space:nowrap}
 .ck .yn{display:flex;gap:6px;margin-top:6px}
 .ck.yes{border-color:var(--ok);background:#EBFBEE}.ck.no{border-color:var(--bad);background:#FFF5F5}
 .ck .fix{margin-top:8px;font-size:13.5px;background:#fff;border-radius:8px;padding:6px 8px}
+
+/* 가치 방식 */
+.vstep{margin:12px 0 2px;font-size:15px}
+.vno{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:800;margin-right:6px}
+.vcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 8px}
+.connbox{background:#F3F0FF;border:2px dashed #B197FC;border-radius:10px;padding:6px 10px;font-size:13.5px;margin:6px 0}
+.connbox b{margin-right:6px}
 </style>
 </head>
 <body data-map="spring">
@@ -1800,8 +1808,11 @@ function posX(team, room){
 }
 
 /* ───────── 의견 쓰기 설정 (교사가 방을 만들 때 정함) ───────── */
-const ARG0 = {ev:false, cr:false, nR:1, nE:1, how:'free', reasons:[], evidences:[], ladder:2};
+const ARG0 = {ev:false, cr:false, nR:1, nE:1, how:'free', reasons:[], evidences:[], values:[], vMean:true, vFlip:true, ladder:2};
 const AC = () => ({...ARG0, ...((R && R.arg) || {})});
+const HOWS = ['free', 'pick', 'value'];
+const ePickOn = (a = AC()) => a.how !== 'free' && arr(a.evidences).length > 0;   // 증거를 목록에서 고르는가
+const valOf = r => !r || r.val == null ? '' : r.val === -1 ? String(r.vOther || '').trim() : String((arr(AC().values)[r.val] || {}).name || '').trim();
 const arr = v => Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.keys(v).sort((a,b) => a - b).map(k => v[k]) : []);
 const cleanEnd = s => String(s || '').replace(/\s+/g, ' ').trim().replace(/[.。!?]+$/, '').trim();
 const cleanReason = s => cleanEnd(s).replace(/^(그 이유는|또 다른 이유는|왜냐하면)\s*/, '').replace(/\s*(때문이다|때문입니다|때문)$/, '').trim();
@@ -2017,14 +2028,15 @@ function drawArgBox(){
       <label class="mini">"왜" 사다리 단계 <select id="aLd">${[2,3,4,5].map(v => `<option ${a.ladder==v?'selected':''}>${v}</option>`).join('')}</select></label></div>
     <div class="mini muted">문장 틀: 주장 → 그 이유는 ~ 때문이다. → 이는 ~는 사실(“~”라는 기록)을 통해 알 수 있다. → 물론 ~고 생각하는 사람도 있을 것이다. → 반박(① 정면 / ② 인정 후, 학생이 선택)</div>
     <b style="display:block;margin-top:12px">쓰기 방식</b>
-    <label class="mini" style="display:block;margin-top:4px"><input type="radio" name="aHow" value="free" ${a.how!=='pick'?'checked':''}> 학생이 모든 요소를 직접 쓰기</label>
-    <label class="mini" style="display:block"><input type="radio" name="aHow" value="pick" ${a.how==='pick'?'checked':''}> 선생님이 준 근거·증거 목록에서 고르기 <span class="muted">(학생은 ‘기타’를 눌러 직접 쓸 수도 있어요)</span></label>
+    <label class="mini" style="display:block;margin-top:4px"><input type="radio" name="aHow" value="free" ${a.how==='free'?'checked':''}> ① 학생이 모든 요소를 직접 쓰기</label>
+    <label class="mini" style="display:block"><input type="radio" name="aHow" value="pick" ${a.how==='pick'?'checked':''}> ② 선생님이 준 <b>근거 문장</b>에서 고르기 <span class="muted">(학생은 ‘기타’를 눌러 직접 쓸 수도 있어요)</span></label>
+    <label class="mini" style="display:block"><input type="radio" name="aHow" value="value" ${a.how==='value'?'checked':''}> ③ 선생님이 준 <b>가치</b>를 고르고, 그 가치를 넣어 학생이 근거를 직접 쓰기 <span class="muted">(단계별 안내)</span></label>
     <div id="pickBox"></div>
     <div class="mini muted" style="margin-top:10px">학생 의견 칸은 언제나 <b>붙여넣기가 막혀</b> 있습니다. 제출하면 학생이 스스로 근거·증거·반론을 점검하는 체크리스트가 뜹니다.</div>`;
   const re = () => { readCF(); drawArgBox(); };
   $('aEv').onchange = re; $('aCr').onchange = re;
   box.querySelectorAll('input[name="aHow"]').forEach(r => r.onchange = re);
-  if(a.how === 'pick') drawPickBox();
+  if(a.how !== 'free') drawPickBox();
 }
 function sideOpts(){ // 목록 항목에 붙일 입장 선택지
   if(CF.form === 'two') return [['','공통'],['A', CF.sideA || '왼쪽'],['B', CF.sideB || '오른쪽']];
@@ -2034,14 +2046,23 @@ function sideOpts(){ // 목록 항목에 붙일 입장 선택지
 function drawPickBox(){
   const a = CF.arg, box = $('pickBox'), so = sideOpts();
   const sel = (v, cls) => `<select class="t ${cls}">${so.map(([k,n]) => `<option value="${k}" ${v===k?'selected':''}>${esc(n)}</option>`).join('')}</select>`;
-  box.innerHTML = `<div class="mini" style="margin:10px 0 4px"><b>근거(이유) 목록</b> — ‘~기’로 끝나게 써 주세요 (예: 치욕의 역사도 잊으면 같은 일을 다시 겪을 수 있기)</div>
+  const top = a.how === 'value'
+    ? `<div class="mini" style="margin:10px 0 4px"><b>가치 목록</b> — 가치 이름(짧게) · 쉬운 뜻 · 생각을 여는 질문(선택) · 어느 입장용인지</div>
+    <div id="vList">${a.values.map(v => `<div class="lrow vl"><input class="t vNm" maxlength="16" placeholder="예) 교훈" value="${esc(v.name)}"><input class="t vMn" maxlength="40" placeholder="예) 실수에서 배우는 것" value="${esc(v.mean)}"><input class="t vQ" maxlength="80" placeholder="예) 이 비석을 기억하면 무엇을 되풀이하지 않을 수 있을까?" value="${esc(v.q)}">${sel(v.side||'', 'vSd')}<button class="btn sm del">✕</button></div>`).join('')}</div>
+    <button class="btn sm" id="vAdd">+ 가치 추가</button>
+    <div class="mini" style="margin:10px 0 2px"><b>학생 단계</b> — ①가치 고르기 · ③내 주장과 연결하기 · ⑤근거 문장으로 묶기는 늘 나와요.</div>
+    <label class="mini" style="display:block"><input type="checkbox" id="vMean" ${a.vMean ? 'checked' : ''}> ② 내 말로 풀기 — “나에게 ○○이란 ___ 것이다.”</label>
+    <label class="mini" style="display:block"><input type="checkbox" id="vFlip" ${a.vFlip ? 'checked' : ''}> ④ 반대로 상상하기 — “내 주장과 반대로 하면 ○○ 면에서 무엇을 잃을까?”</label>`
+    : `<div class="mini" style="margin:10px 0 4px"><b>근거(이유) 목록</b> — ‘~기’로 끝나게 써 주세요 (예: 치욕의 역사도 잊으면 같은 일을 다시 겪을 수 있기)</div>
     <div id="rList">${a.reasons.map(r => `<div class="lrow"><input class="t rTx" maxlength="100" value="${esc(r.text)}">${sel(r.side||'', 'rSd')}<button class="btn sm del">✕</button></div>`).join('')}</div>
-    <button class="btn sm" id="rAdd">+ 근거 추가</button>
-    ${a.ev ? `<div class="mini" style="margin:12px 0 4px"><b>증거(사례) 목록</b> — 사실은 ‘~다’로 끝나게, 기록은 따옴표 없이 사료 문장만</div>
+    <button class="btn sm" id="rAdd">+ 근거 추가</button>`;
+  box.innerHTML = `${top}
+    ${a.ev ? `<div class="mini" style="margin:12px 0 4px"><b>증거(사례) 목록</b> — 사실은 ‘~다’로 끝나게, 기록은 따옴표 없이 사료 문장만${a.how === 'value' ? ' <span class="muted">(비워 두면 학생이 증거를 직접 써요)</span>' : ''}</div>
     <div id="eList">${a.evidences.map(e => `<div class="lrow ev"><select class="t eTy"><option value="fact" ${e.type!=='record'?'selected':''}>역사적 사실</option><option value="record" ${e.type==='record'?'selected':''}>사료 기록</option></select><input class="t eTx" maxlength="140" value="${esc(e.text)}"><input class="t eSr" maxlength="40" placeholder="출처" value="${esc(e.src)}">${sel(e.side||'', 'eSd')}<button class="btn sm del">✕</button></div>`).join('')}</div>
     <button class="btn sm" id="eAdd">+ 증거 추가</button>` : ''}`;
   box.querySelectorAll('.del').forEach(b => b.onclick = () => { b.parentElement.remove(); readCF(); });
-  $('rAdd').onclick = () => { readCF(); CF.arg.reasons.push({text:'', side:''}); drawPickBox(); };
+  if($('rAdd')) $('rAdd').onclick = () => { readCF(); CF.arg.reasons.push({text:'', side:''}); drawPickBox(); };
+  if($('vAdd')) $('vAdd').onclick = () => { readCF(); CF.arg.values.push({name:'', mean:'', q:'', side:''}); drawPickBox(); };
   if($('eAdd')) $('eAdd').onclick = () => { readCF(); CF.arg.evidences.push({type:'fact', text:'', src:'', side:''}); drawPickBox(); };
 }
 function readCF(){
@@ -2054,7 +2075,10 @@ function readCF(){
   document.querySelectorAll('.mcl').forEach(el => CF.multi[+el.dataset.i].claim = el.value.trim());
   if($('sSt')) CF.scale = {statement:v('sSt').trim(), left:v('sL').trim(), right:v('sR').trim(), max:+v('sMax'), claim:v('sCl').trim()};
   if($('aEv')){ const a = CF.arg; a.ev = $('aEv').checked; a.cr = $('aCr').checked; a.nR = +v('aNR'); a.nE = +v('aNE'); a.ladder = +v('aLd');
-    const h = document.querySelector('input[name="aHow"]:checked'); a.how = h ? h.value : 'free';
+    const h = document.querySelector('input[name="aHow"]:checked'); a.how = h && HOWS.includes(h.value) ? h.value : 'free';
+    if(!Array.isArray(a.values)) a.values = []; if(a.vMean == null) a.vMean = true; if(a.vFlip == null) a.vFlip = true;
+    if($('vMean')){ a.vMean = $('vMean').checked; a.vFlip = $('vFlip').checked; }
+    if($('vList')) a.values = [...document.querySelectorAll('#vList .lrow')].map(r => ({name:r.querySelector('.vNm').value.trim(), mean:r.querySelector('.vMn').value.trim(), q:r.querySelector('.vQ').value.trim(), side:r.querySelector('.vSd').value}));
     if($('rList')) a.reasons = [...document.querySelectorAll('#rList .lrow')].map(r => ({text:r.querySelector('.rTx').value.trim(), side:r.querySelector('.rSd').value}));
     if($('eList')) a.evidences = [...document.querySelectorAll('#eList .lrow')].map(r => ({type:r.querySelector('.eTy').value, text:r.querySelector('.eTx').value.trim(), src:r.querySelector('.eSr').value.trim(), side:r.querySelector('.eSd').value})); }
 }
@@ -2077,9 +2101,12 @@ async function openRoom(){
     sideA = scale.left + ' 쪽'; sideB = scale.right + ' 쪽';
   }
   const a = c.arg;
-  const arg = {ev:!!a.ev, cr:!!a.cr, nR:+a.nR || 1, nE:+a.nE || 1, ladder:+a.ladder || 2, how:a.how === 'pick' ? 'pick' : 'free',
-    reasons: a.how === 'pick' ? a.reasons.filter(r => r.text) : [], evidences: a.how === 'pick' && a.ev ? a.evidences.filter(e => e.text) : []};
-  if(arg.how === 'pick' && !arg.reasons.length) return toast('고르기 방식이면 근거 목록을 하나 이상 써 주세요');
+  const how = HOWS.includes(a.how) ? a.how : 'free';
+  const arg = {ev:!!a.ev, cr:!!a.cr, nR:+a.nR || 1, nE:+a.nE || 1, ladder:+a.ladder || 2, how,
+    reasons: how === 'pick' ? arr(a.reasons).filter(r => r.text) : [], evidences: how !== 'free' && a.ev ? arr(a.evidences).filter(e => e.text) : [],
+    values: how === 'value' ? arr(a.values).filter(v => v.name) : [], vMean: a.vMean !== false, vFlip: a.vFlip !== false};
+  if(how === 'pick' && !arg.reasons.length) return toast('고르기 방식이면 근거 목록을 하나 이상 써 주세요');
+  if(how === 'value' && !arg.values.length) return toast('가치 방식이면 가치 목록을 하나 이상 써 주세요');
   if(arg.how === 'pick' && arg.ev && !arg.evidences.length) return toast('고르기 방식이면 증거 목록도 하나 이상 써 주세요');
   if(arg.evidences.some(e => !e.src)) return toast('증거 목록의 출처를 모두 써 주세요');
   const split = mode === 'scale' ? 'pick' : c.split;
@@ -2478,7 +2505,7 @@ function bindResult(host){
     const {ind} = calc();
     const parts = p => { const o = {claim:'', reason:[], evid:[], counter:'', rebut:''}; if(p.arg) composeParts(p.arg, p).forEach(x => { if(Array.isArray(o[x.k])) o[x.k].push(x.t); else o[x.k] = x.t; }); return o; };
     const rows = players().map(p => { const o = parts(p);
-      return [p.num ? Number(p.num) || p.num : '', p.name, sideName(p.team) + (p.score != null ? ` (${p.score}점)` : ''), p.text || '', o.reason.join(' '), o.evid.join(' '), srcList(p.arg).join(' / '), o.counter, o.rebut,
+      return [p.num ? Number(p.num) || p.num : '', p.name, sideName(p.team) + (p.score != null ? ` (${p.score}점)` : ''), p.text || '', (AC().how === 'value' ? arr(p.arg && p.arg.reasons).map(valOf).filter(Boolean).map(v => `[가치: ${v}] `).join('') : '') + o.reason.join(' '), o.evid.join(' '), srcList(p.arg).join(' / '), o.counter, o.rebut,
         p.diagDone ? 'O' : '', p.diagFix || 0, p.likes || 0, ind[p.id] || 0, R.r3start && R.r3start[p.id] && R.r3start[p.id] !== p.team ? 'O' : (R.r3score && p.score != null && R.r3score[p.id] != null && R.r3score[p.id] !== p.score ? `${R.r3score[p.id]}→${p.score}` : ''), p.r3text || '', p.r3why || '', recordFor(p)]; });
     const blob = makeXlsx(['번호','이름','최종 입장','처음 쓴 의견(전체)','근거(이유)','증거(사례)','출처','예상 반론','반박','스스로 점검','고쳐 쓴 횟수','받은 좋아요','개인 점수','건너감·이동','바뀐 입장','바뀐 이유','생기부 문장(초안)'], rows, [6,9,16,60,40,40,24,34,34,9,9,9,9,9,36,36,70]);
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `토론광장_${R.grade}-${R.cls}_${new Date().toISOString().slice(0,10)}.xlsx`; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);
@@ -2492,11 +2519,12 @@ function recordFor(p){
   const startScore = R.r3score && R.r3score[p.id] != null ? R.r3score[p.id] : p.score;
   out.push(MODE() === 'scale' && startScore != null ? `‘${t}’${josa(t,'을','를').slice(t.length)} 두고 벌인 토론 활동에서 ‘${clean(SC().statement)}’라는 진술에 ${SC().max}점 중 ${startScore}점의 입장을 밝힘.` : `‘${t}’${josa(t,'을','를').slice(t.length)} 두고 벌인 토론 활동에서 ‘${sideName(startTeam || p.team)}’ 입장에 섬.`);
   const reasons = arr(p.arg && p.arg.reasons).map(r => cleanReason(r && r.body)).filter(Boolean);
-  if(reasons.length) out.push(`‘${reasons[0].slice(0,50)} 때문’이라는 근거를 들어 자신의 주장을 뒷받침함.`);
+  const val0 = AC().how === 'value' ? valOf(arr(p.arg && p.arg.reasons)[0]) : '';
+  if(reasons.length) out.push(val0 ? `‘${val0}’${josa(val0,'을','를').slice(val0.length)} 중요한 가치로 삼아 ‘${reasons[0].slice(0,50)} 때문’이라는 근거를 스스로 세워 자신의 주장을 뒷받침함.` : `‘${reasons[0].slice(0,50)} 때문’이라는 근거를 들어 자신의 주장을 뒷받침함.`);
   else if(p.text) out.push(`‘${clean(p.text).slice(0,50)}’라는 근거를 들어 자신의 입장을 밝힘.`);
   if(srcList(p.arg).length) out.push('사료나 역사적 사실을 출처와 함께 증거로 제시함.');
   if(p.arg && p.arg.counter && p.arg.counter.a) out.push('예상되는 반론을 스스로 세우고 이를 반박하여 논증을 완성함.');
-  if(p.diagDone){ const a = AC(), el = ['근거'].concat(a.ev ? ['증거'] : [], a.cr ? ['반론·반박'] : []); const w = el.length === 1 ? '근거를' : el.slice(0,-1).join(', ') + '와 ' + el[el.length-1] + (el.length === 3 ? '을' : '를'); out.push(p.diagFix ? `점검표로 자신의 ${w} 스스로 점검하고 고쳐 씀.` : `점검표로 자신의 ${w} 스스로 점검함.`); }
+  if(p.diagDone){ const a = AC(), el = ['근거'].concat(a.ev ? ['증거'] : [], a.cr ? ['반론·반박'] : []); const w = el.length === 1 ? '근거를' : el.slice(0,-1).join(', ') + '와 ' + josa(el[el.length-1], '을', '를'); out.push(p.diagFix ? `점검표로 자신의 ${w} 스스로 점검하고 고쳐 씀.` : `점검표로 자신의 ${w} 스스로 점검함.`); }
   if((p.likes||0) >= 2) out.push(`또래 평가에서 좋아요 ${p.likes}개를 받아 근거의 설득력을 인정받음.`);
   if(repIds().has(p.id)) out.push('친구들의 지지로 대표에 뽑혀 다른 입장의 학생들 앞에서 자신의 논리를 발표함.');
   const opp = voteList().filter(v => { const m = (R.matches||[])[v.mi]; if(!m) return false;
@@ -2648,8 +2676,8 @@ const STEP_NAME = {side:'입장 고르기', reason:'근거(이유)', evid:'증�
 const dKey = () => `tg_draft_${ROOM}_${UID}`;
 function canPickSide(){ return R.phase === 'write' && (MODE() === 'scale' || R.split === 'pick'); }
 function wizSteps(){ const a = AC(), s = []; if(canPickSide()) s.push('side'); s.push('reason'); if(a.ev) s.push('evid'); if(a.cr) s.push('counter'); s.push('preview'); return s; }
-function blankArg(){ const a = AC(); return {reasons:[...Array(a.nR)].map(() => ({body:'', pick:a.how === 'pick' ? null : -1})),
-  evid:[...Array(a.nR)].map(() => [...Array(a.ev ? a.nE : 0)].map(() => ({type:'fact', body:'', src:'', pick:a.how === 'pick' ? null : -1}))),
+function blankArg(){ const a = AC(), ep = ePickOn(a); return {reasons:[...Array(a.nR)].map(() => a.how === 'value' ? {body:'', pick:-1, val:null, vOther:'', mean:'', link:'', flip:''} : {body:'', pick:a.how === 'pick' ? null : -1}),
+  evid:[...Array(a.nR)].map(() => [...Array(a.ev ? a.nE : 0)].map(() => ({type:'fact', body:'', src:'', pick:ep ? null : -1}))),
   counter:{a:'', b:''}, rebut:{type:null, a:'', b:''}}; }
 function fitArg(x){
   const b = blankArg(); x = x || {};
@@ -2678,6 +2706,8 @@ function readWiz(){
   const d = $('wiz'); if(!d || !WIZ) return;
   d.querySelectorAll('[data-f]').forEach(el => { const f = el.dataset.f.split('.'), v = el.value, D = WIZ.data;
     if(f[0] === 'r') D.reasons[+f[1]].body = v;
+    else if(f[0] === 'vo') D.reasons[+f[1]].vOther = v; else if(f[0] === 'vm') D.reasons[+f[1]].mean = v;
+    else if(f[0] === 'vl') D.reasons[+f[1]].link = v; else if(f[0] === 'vf') D.reasons[+f[1]].flip = v;
     else if(f[0] === 'e') D.evid[+f[1]][+f[2]].body = v;
     else if(f[0] === 's') D.evid[+f[1]][+f[2]].src = v;
     else if(f[0] === 'ca') D.counter.a = v; else if(f[0] === 'cb') D.counter.b = v;
@@ -2711,8 +2741,37 @@ function sideStepHTML(m){
   return `<p style="margin:4px 0 8px">어느 입장에 설까요? <span class="mini muted">(다음 단계에서도 [이전]을 눌러 다시 고를 수 있어요)</span></p>
     <div class="sidepick">${sideKeys().map(k => `<button class="spk ${k} ${m.team === k ? 'on' : ''}" data-k="${k}"><b>${esc(sideName(k))}</b><span>${esc(claimFor({team:k}))}</span></button>`).join('')}</div>`;
 }
+function eulReul(w){ return josa(w, '을', '를').slice(String(w).length); }
+function iRan(w){ const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? '이란' : '란'; }
+function valueSlotHTML(m, r, i){
+  const a = AC(), opts = arr(a.values).map((v, k) => ({...v, k})).filter(v => !v.side || v.side === m.team);
+  const list = `<div class="vstep"><span class="vno">1</span><b>가치 고르기</b> — 내 주장에서 가장 중요하게 여기는 것은?</div>
+    <div class="vcards">${opts.map(o => `<label class="opt vc ${r.val === o.k ? 'on' : ''}"><input type="radio" name="vp${i}" data-vp="${i}" value="${o.k}" ${r.val === o.k ? 'checked' : ''}> <b>${esc(o.name)}</b>${o.mean ? ` <span class="mini muted">— ${esc(o.mean)}</span>` : ''}</label>`).join('')}
+      <label class="opt vc ${r.val === -1 ? 'on' : ''}"><input type="radio" name="vp${i}" data-vp="${i}" value="-1" ${r.val === -1 ? 'checked' : ''}> 기타 — 내가 정한 가치</label></div>
+    ${r.val === -1 ? `<div class="frame"><b>내가 정한 가치:</b><input class="t" data-f="vo.${i}" maxlength="16" placeholder="예) 평화" value="${esc(r.vOther)}" style="flex:0 1 220px"></div>` : ''}`;
+  if(r.val == null) return list;
+  const vn = valOf(r) || '○○', vq = r.val >= 0 ? String((arr(a.values)[r.val] || {}).q || '').trim() : '';
+  let n = 1; const no = () => `<span class="vno">${++n}</span>`;
+  const mean = a.vMean ? `<div class="vstep">${no()}<b>내 말로 풀기</b> — ‘${esc(vn)}’${iRan(vn)} 나에게 어떤 뜻일까?</div>
+    <div class="frame"><b>나에게 ‘${esc(vn)}’${iRan(vn)}</b><input class="t" data-f="vm.${i}" maxlength="60" placeholder="예) 같은 잘못을 다시 하지 않도록 배우는" value="${esc(r.mean)}" style="flex:1 1 240px"><b>것이다.</b></div>` : '';
+  const link = `<div class="vstep">${no()}<b>내 주장과 연결하기</b> — 내 주장대로 하면 ‘${esc(vn)}’ 면에서 무엇이 좋아질까?</div>
+    ${vq ? `<div class="hint">선생님 질문: ${esc(vq)}</div>` : ''}
+    <div class="frame"><b>내 주장대로 하면</b><textarea class="t" data-f="vl.${i}" maxlength="100" placeholder="예) 사람들이 ~을 계속 기억할 수 있다 / ~이 지켜진다">${esc(r.link)}</textarea></div>`;
+  const flip = a.vFlip ? `<div class="vstep">${no()}<b>반대로 상상하기</b> — 내 주장과 반대로 하면 ‘${esc(vn)}’ 면에서 무엇을 잃을까?</div>
+    <div class="frame"><b>반대로 하면</b><textarea class="t" data-f="vf.${i}" maxlength="100" placeholder="예) ~을 잊게 된다 / ~이 사라진다">${esc(r.flip)}</textarea></div>` : '';
+  const tie = `<div class="vstep">${no()}<b>근거 문장으로 묶기</b> — 위에서 쓴 답을 이어 ‘${esc(vn)}’${eulReul(vn)} 담은 근거를 써요.</div>
+    <div class="connbox"><b>이어 주는 말</b> ~해야 ~할 수 있기 · ~하면 ~하게 되기 · ${esc(vn)}${eulReul(vn)} 지키려면 ~해야 하기 · ~하지 않으면 ~을 잃기</div>
+    <div class="frame"><b>${i ? '또 다른 이유는' : '그 이유는'}</b><textarea class="t" data-f="r.${i}" maxlength="140" placeholder="예) ~이 남아 있어야 사람들이 ~을 기억하고 ~할 수 있기">${esc(r.body)}</textarea><b>때문이다.</b></div>`;
+  return list + mean + link + flip + tie;
+}
 function reasonStepHTML(m){
   const a = AC(), pick = a.how === 'pick';
+  if(a.how === 'value'){
+    const slots = WIZ.data.reasons.map((r, i) => `<div class="slot">${a.nR > 1 ? `<div class="slotno">근거 ${i + 1}</div>` : ''}${valueSlotHTML(m, r, i)}</div>`).join('');
+    return `<div class="steplbl">근거(이유) — 내가 중요하게 여기는 가치를 골라 내 말로 근거를 만들어요</div>${slots}
+      <div class="hint">근거는 ‘~기’로 끝나게 쓰세요. 고른 가치 낱말을 꼭 그대로 쓰지 않아도, 뜻이 드러나면 돼요.</div>
+      <button class="btn sm" id="wTip">💡 Tip ${WIZ.tip ? '닫기' : ''}</button>${WIZ.tip ? tipHTML(m) : ''}`;
+  }
   const opts = pick ? arr(a.reasons).map((r, i) => ({...r, i})).filter(r => !r.side || r.side === m.team) : [];
   const slots = WIZ.data.reasons.map((r, i) => {
     const showFrame = !pick || r.pick != null;
@@ -2747,7 +2806,7 @@ function tipHTML(m){
     ${WIZ.lad ? '' : '<button class="btn sm" id="wLad" style="margin-top:6px">그래도 잘 모르겠어요</button>'}</div>${lad}`;
 }
 function evidStepHTML(m){
-  const a = AC(), pick = a.how === 'pick';
+  const a = AC(), pick = ePickOn(a);
   const opts = pick ? arr(a.evidences).map((e, i) => ({...e, i})).filter(e => !e.side || e.side === m.team) : [];
   return `<div class="steplbl">증거(사례) — 내 근거를 보여 주는 역사적 사실이나 사료 기록 + 출처</div>` + WIZ.data.reasons.map((r, i) => {
     const echo = `<div class="echo">${i ? '또 다른 이유는' : '그 이유는'} ${esc(cleanReason(r.body) || '…')} 때문이다.</div>`;
@@ -2785,10 +2844,16 @@ function stepError(st){
   if(st === 'side') return (MODE() === 'scale' ? m.score == null : !m.team) ? (MODE() === 'scale' ? '점수 자리를 골라 주세요' : '입장을 골라 주세요') : '';
   if(st === 'reason'){ for(const [i, r] of D.reasons.entries()){ const n = a.nR > 1 ? `근거 ${i + 1}: ` : '';
       if(a.how === 'pick' && r.pick == null) return n + '근거를 고르거나 ‘기타’를 눌러 직접 써 주세요';
+      if(a.how === 'value'){
+        if(r.val == null) return n + '① 가치를 골라 주세요';
+        if(r.val === -1 && L(r.vOther) < 1) return n + '① 내가 정한 가치를 써 주세요';
+        if(a.vMean && L(r.mean) < 2) return n + '② 가치를 내 말로 풀어 써 주세요';
+        if(L(r.link) < 4) return n + '내 주장과 연결하는 칸을 채워 주세요';
+        if(a.vFlip && L(r.flip) < 4) return n + '반대로 상상하는 칸을 채워 주세요'; }
       if(L(cleanReason(r.body)) < 4) return n + '근거(이유)를 조금 더 써 주세요';
       if(/다$/.test(cleanReason(r.body))) return n + '근거는 ‘~기’로 끝나게 써 주세요 (예: 있다 → 있기)'; } return ''; }
   if(st === 'evid'){ for(const [i, g] of D.evid.entries()) for(const [j, e] of g.entries()){ const n = `근거 ${i + 1}의 증거${a.nE > 1 ? ' ' + (j + 1) : ''}: `;
-      if(a.how === 'pick' && e.pick == null) return n + '증거를 고르거나 ‘기타’를 눌러 직접 써 주세요';
+      if(ePickOn(a) && e.pick == null) return n + '증거를 고르거나 ‘기타’를 눌러 직접 써 주세요';
       if(L(e.body) < 4) return n + '증거를 조금 더 써 주세요';
       if(e.type !== 'record' && !/다$/.test(cleanFact(e.body))) return n + '역사적 사실은 ‘~다’로 끝나게 써 주세요';
       if(L(e.src) < 2) return n + '출처를 써 주세요'; } return ''; }
@@ -2812,6 +2877,7 @@ function bindWiz(st){
   // 목록에서 고르기
   d.querySelectorAll('[data-rp]').forEach(r => r.onchange = () => { readWiz(); const i = +r.dataset.rp, v = +r.value, slot = WIZ.data.reasons[i];
     slot.pick = v; slot.body = v >= 0 ? (arr(AC().reasons)[v] || {}).text || '' : ''; drawWiz(); });
+  d.querySelectorAll('[data-vp]').forEach(r => r.onchange = () => { readWiz(); WIZ.data.reasons[+r.dataset.vp].val = +r.value; drawWiz(); });
   d.querySelectorAll('[data-ep]').forEach(r => r.onchange = () => { readWiz(); const [i, j] = r.dataset.ep.split('.').map(Number), v = +r.value, e = WIZ.data.evid[i][j];
     e.pick = v; if(v >= 0){ const o = arr(AC().evidences)[v] || {}; e.body = o.text || ''; e.type = o.type === 'record' ? 'record' : 'fact'; e.src = o.src || ''; } else { e.body = ''; e.src = ''; } drawWiz(); });
   d.querySelectorAll('[data-ty]').forEach(b => b.onclick = () => { readWiz(); const [i, j] = b.dataset.ty.split('.').map(Number); WIZ.data.evid[i][j].type = b.dataset.v; drawWiz(); });
@@ -2849,6 +2915,13 @@ function diagItems(g, arg){
   const a = AC();
   if(g === 'reason'){
     const usedPick = a.how === 'pick' && arr(arg && arg.reasons).some(r => r && picked(r.pick));
+    const vals = a.how === 'value' ? [...new Set(arr(arg && arg.reasons).map(valOf).filter(Boolean))] : [];
+    if(vals.length) return [
+      ['vshow', `내 근거에 내가 고른 가치(${vals.map(v => '‘' + v + '’').join(', ')})가 드러난다. (낱말을 그대로 쓰지 않아도 뜻이 드러나면 ‘예’)`, '‘내 주장과 연결하기’에 쓴 답을 넣어 근거를 다시 묶어 보세요.'],
+      ['repeat', '근거가 주장을 그대로 되풀이하지 않는다. (✗ 보전해야 하는 이유는 보전이 중요하기 때문이다)', '‘내 주장대로 하면 무엇이 좋아지는지’를 근거에 넣어 보세요.'],
+      ['why', '친구가 “왜?”라고 물으면 내 말로 설명할 수 있다.', '설명이 어렵다면 내가 이해한 쉬운 말로 바꿔 써 보세요.'],
+      ['own', 'AI나 다른 사람의 글을 베끼지 않고 내 생각으로 썼다.', '서툴러도 괜찮아요. 내 생각으로 다시 써 주세요.']
+    ].map(x => [...x, 'reason']);
     return (usedPick ? [
       ['side', '내가 고른 근거가 내 주장과 같은 편이다.', '내 주장을 뒷받침하는 근거를 다시 골라 보세요.'],
       ['own', '고른 근거를 친구에게 내 말로 다시 설명할 수 있다.', '근거를 소리 내어 읽고 무슨 뜻인지 짝에게 설명해 보세요. 어렵다면 다른 근거를 고르거나 ‘기타’로 직접 써 보세요.'],
