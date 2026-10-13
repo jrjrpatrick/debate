@@ -2584,12 +2584,14 @@ function stuTodo(m){
   if(!m) return '들어가는 중…';
   const mode = MODE();
   const myT = mode === 'scale' ? (m.score != null ? `<span class="myteam" style="color:#FFE066">${m.score}점</span> 자리` : '아직 자리를 고르지 않았어요') : m.team ? `<span class="myteam" style="color:#FFE066">${esc(sideName(m.team))}</span> 팀` : '아직 팀이 없어요';
-  const writeBtn = m.text && !m.diagDone ? '<b>[스스로 점검 마치기]</b>' : '<b>[내 의견 쓰기]</b>';
+  const writeBtn = '<b>[내 의견 쓰기]</b>';
   switch(R.phase){
     case 'write':
+      if(m.text && !m.diagDone) return `나는 ${myT}. 의견을 냈어요 — <b>[스스로 점검하기]</b>를 눌러 점검을 마쳐야 제출이 끝나요.`;
+      if(m.text && m.diagDone) return `나는 ${myT}. <b>제출 완료!</b> 더 고치려면 <b>[내 의견 고치기]</b>, 다시 점검하려면 <b>[스스로 점검하기]</b>를 누르세요. 선생님이 1라운드를 시작할 때까지 기다려요.`;
       if(mode === 'scale') return m.score == null ? '수직선 위를 눌러 <b>내 생각에 맞는 점수 자리</b>에 서세요. 그다음 ' + writeBtn + '.' : `나는 ${myT}. ${writeBtn}를 눌러 내 주장과 근거를 쓰세요.`;
       return R.split === 'pick' ? `바닥을 누르거나 ${writeBtn}에서 입장을 고르세요. · ${myT}` : `나는 ${myT}. ${writeBtn}를 눌러 내 주장과 근거를 쓰세요.`;
-    case 'r1': { const left = LIKES - (m.liked||[]).length; const who = mode === 'scale' ? '친구들의' : '우리 팀'; return (m.text && !m.diagDone ? '먼저 <b>[스스로 점검 마치기]</b>를 끝내세요. ' : '') + (left > 0 ? `친구 캐릭터를 눌러 ${who} 논리를 읽고, 센 것에 <b>좋아요</b>를 주세요. 남은 좋아요 <b>${left}개</b>` : '좋아요를 다 썼어요. 남은 글은 읽어만 두세요.'); }
+    case 'r1': { const left = LIKES - (m.liked||[]).length; const who = mode === 'scale' ? '친구들의' : '우리 팀'; return (m.text && !m.diagDone ? '먼저 <b>[스스로 점검하기]</b>를 끝내세요. ' : '') + (left > 0 ? `친구 캐릭터를 눌러 ${who} 논리를 읽고, 센 것에 <b>좋아요</b>를 주세요. 남은 좋아요 <b>${left}개</b>` : '좋아요를 다 썼어요. 남은 글은 읽어만 두세요.'); }
     case 'r2': return '대표 대결 — 발언을 듣고 가장 설득력 있는 쪽에 투표하세요. 누가 어디에 넣었는지는 아무도 볼 수 없습니다.';
     case 'r3': {
       if(mode === 'scale'){ const s0 = (R.r3score || {})[UID]; if(s0 != null && m.score != null && s0 !== m.score) return m.r3why ? `${s0}점 → ${m.score}점으로 옮기고 이유를 남겼어요. 고치려면 <b>[바뀐 이유 고치기]</b>를 누르세요.` : `${s0}점 → ${m.score}점으로 옮겼어요 — <b>[옮긴 이유 쓰기]</b>를 눌러 바뀐 생각과 이유를 쓰세요.`; return '마지막 선택입니다. 생각이 바뀌었으면 <b>수직선 위 새 점수 자리를 눌러 걸어가세요.</b> 그대로면 그 자리에 있으면 됩니다.'; }
@@ -2608,7 +2610,7 @@ function stuView(){
     <div class="bar" id="sbar"></div>`;
   const bar = $('sbar'); const add = (t, f, cls='pri') => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = t; b.onclick = f; bar.appendChild(b); };
   if(R.phase === 'write' || R.phase === 'r1'){
-    if(m.text && !m.diagDone) add('스스로 점검 마치기', () => openDiag(), 'pri');
+    if(m.text) add('스스로 점검하기', () => openDiag(), m.diagDone ? '' : 'pri');
     add(m.text ? '내 의견 고치기' : '내 의견 쓰기', () => openWiz(), m.text ? '' : 'pri');
   }
   if(R.phase === 'r3'){ const was = R.r3start && R.r3start[UID], s0 = (R.r3score || {})[UID];
@@ -2940,7 +2942,7 @@ function bindWiz(st){
     const got = qaList(WIZ.data, wm().team, UID).filter(x => arr(r.use).includes(x.i)).map(x => x.a.replace(/[.。!?]+$/, ''));
     if(!got.length) return toast('먼저 근거에 쓸 답을 체크해 주세요');
     r.body = (cleanEnd(r.body) ? r.body.trim() + ' ' : '') + got.join(' '); drawWiz(); toast('가져온 답을 ‘~기’로 끝나는 한 문장으로 다듬어 주세요');
-    const f = d.querySelector(`[data-f="r.${i}"]`); if(f){ f.focus(); f.setSelectionRange(f.value.length, f.value.length); } });
+    const f = d.querySelector(`[data-f="r.${i}"]`); if(f){ f.scrollIntoView({block:'center', behavior:'smooth'}); f.focus({preventScroll:true}); f.setSelectionRange(f.value.length, f.value.length); } });
   if($('wSubmit')) $('wSubmit').onclick = submitWiz;
   // 입장 고르기
   d.querySelectorAll('.spk').forEach(b => b.onclick = async () => { readWiz(); const k = b.dataset.k, m = me(); if(!m || m.team === k) return;
@@ -2965,7 +2967,8 @@ function bindWiz(st){
   if($('ladUse')) $('ladUse').onclick = () => { readWiz(); const L = AC().ladder, last = ladReason(WIZ.lad.vals, L);
     const cand = WIZ.data.reasons.filter(r => !picked(r.pick)), slot = cand.find(r => !cleanEnd(r.body)) || cand[0];
     if(!slot) return toast('고른 근거가 있어요 — ‘기타’를 눌러야 직접 쓸 수 있어요');
-    slot.pick = -1; slot.body = last; drawWiz(); toast('근거 칸에 넣었어요 — 어색한 곳을 다듬어 주세요'); };
+    slot.pick = -1; slot.body = last; drawWiz(); toast('근거 칸에 넣었어요 — 어색한 곳을 다듬어 주세요');
+    const f = d.querySelector(`[data-f="r.${WIZ.data.reasons.indexOf(slot)}"]`); if(f){ f.scrollIntoView({block:'center', behavior:'smooth'}); f.focus({preventScroll:true}); f.setSelectionRange(f.value.length, f.value.length); } };
 }
 async function submitWiz(){
   readWiz();
@@ -3048,11 +3051,12 @@ function drawDiag(){
   d.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { DG.ans[g + '.' + b.dataset.n] = 'n'; drawDiag(); });
   d.querySelectorAll('[data-fix]').forEach(b => b.onclick = async () => { const it = items.find(x => x[0] === b.dataset.fix);
     closeDiag(); await store.updatePlayer(ROOM, UID, {diagFix: INC(1)}); openWiz(it ? it[3] : 'reason'); });
-  $('dLater').onclick = () => { closeDiag(); toast('[스스로 점검 마치기]를 눌러 언제든 이어서 할 수 있어요'); };
+  $('dLater').onclick = () => { closeDiag(); toast('[스스로 점검하기]를 눌러 언제든 이어서 할 수 있어요'); };
   $('dNext').onclick = async () => {
     if(DG.g + 1 < gs.length){ DG.g++; drawDiag(); return; }
     await store.updatePlayer(ROOM, UID, {diagDone:true, diag:{...DG.ans}});
-    closeDiag(); try{ localStorage.removeItem(dKey()); }catch(e){}
+    closeDiag(); closeWiz(); try{ localStorage.removeItem(dKey()); }catch(e){}
+    window.scrollTo(0, 0); render();
     pop('점검 완료!'); toast('제출을 마쳤어요. 친구들이 1라운드에 내 글을 읽게 됩니다.');
   };
 }
