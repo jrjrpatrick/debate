@@ -1366,10 +1366,6 @@ body[data-map="night"] .board::before{background:linear-gradient(90deg,rgba(76,1
 .phasebar{display:flex;gap:6px;margin:10px 0}
 .phasebar span{flex:1;text-align:center;font-size:12px;font-weight:700;padding:6px;border-radius:9px;background:#EEF0F4;color:var(--ink2)}
 .phasebar span.on{background:linear-gradient(#FFE066,#FAB005);color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
-.phasebar span.back{cursor:pointer;color:var(--ink)}.phasebar span.back:hover{background:#DDE3EC;box-shadow:inset 0 0 0 2px var(--ink2)}
-.phasebar span.back::before{content:'↩ ';opacity:.6}
-.warnbox{margin-top:6px;padding:8px 10px;border-radius:10px;background:#FFF0F0;border:2px solid #FF8787;color:#C92A2A;font-size:13px}
-.refq ol{margin:6px 0 0 18px;padding:0}.refq li{margin:3px 0}
 .timer{font-family:"Gowun Dodum";font-size:44px;font-weight:800;text-align:center;letter-spacing:.02em}
 .timer.low{color:var(--bad)}
 .guide{background:#F1F3F5;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.5}
@@ -1835,10 +1831,8 @@ function posX(team, room){
 }
 
 /* ───────── 의견 쓰기 설정 (교사가 방을 만들 때 정함) ───────── */
-const ARG0 = {ev:false, cr:false, nR:1, nE:1, how:'free', reasons:[], evidences:[], qs:[], qAll:true, showQ:false, useLad:true, ladder:2, minQ:10, minR:15, minE:15, minC:15, minRb:15};   // min*: 띄어쓰기 빼고 이 글자 수보다 길게
+const ARG0 = {ev:false, cr:false, nR:1, nE:1, how:'free', reasons:[], evidences:[], qs:[], qAll:true, ladder:2, minQ:10, minR:15, minE:15, minC:15, minRb:15};   // min*: 띄어쓰기 빼고 이 글자 수보다 길게
 const AC = () => ({...ARG0, ...((R && R.arg) || {})});
-const ladOn = a => a.useLad !== false && a.how !== 'pick';   // '왜' 사다리(💡 Tip)는 ①·③ 방식에서 교사가 켰을 때만
-const refQ = a => a.how === 'free' && !!a.showQ && arr(a.qs).some(q => q && q.q);   // ① 방식에서 참고용 질문만 보여 주기
 const HOWS = ['free', 'pick', 'ask'];
 const ePickOn = (a = AC()) => a.how !== 'free' && arr(a.evidences).length > 0;   // 증거를 목록에서 고르는가
 function seedShuffle(list, seed){   // 학생마다 다르지만, 같은 학생에게는 늘 같은 순서
@@ -1890,7 +1884,7 @@ function noPaste(root){
 }
 
 /* ───────── 점수 계산 (저장하지 않고 언제나 데이터에서 다시 셈) ───────── */
-function voteList(){ const vr = (R && R.vr) || 0; return Object.values(V || {}).filter(v => (v.vr || 0) === vr); }
+function voteList(){ return Object.values(V || {}); }
 function calc(){
   const ps = players(), ind = {}, team = {}; sideKeys().forEach(k => team[k] = 0);
   ps.forEach(p => ind[p.id] = (p.likes||0)*PT.got + (p.liked||[]).length*PT.give + (p.readAll ? PT.readAll : 0));
@@ -1932,7 +1926,7 @@ function render(){
 function mockBanner(){ return store.mock ? '<div class="banner">체험 모드 — Firebase 설정 전이라 <b>이 브라우저 안에서만</b> 작동합니다. 같은 브라우저의 다른 탭으로 학생 입장을 시험해 볼 수 있어요.</div>' : ''; }
 
 /* ───────── 홈 ───────── */
-const APP_VER = '2026-10-20 ⑩';   // 화면에 보이는 판 번호 — GitHub에 올린 파일이 최신인지 확인용
+const APP_VER = '2026-10-13 ⑨';   // 화면에 보이는 판 번호 — GitHub에 올린 파일이 최신인지 확인용
 function homeView(){
   const map = document.body.dataset.map;
   app.innerHTML = `${mockBanner()}
@@ -2030,7 +2024,7 @@ function createView(){
   app.querySelectorAll('#cForm button').forEach(b => b.onclick = () => { readCF(); CF.form = b.dataset.k; createView(); });
   drawFormBox(); drawSplitBox(); drawArgBox();
   $('back').onclick = () => { readCF(); VIEW = 'home'; render(); };
-  $('open').onclick = () => { readCF(); openRoom(); }; updOpen();
+  $('open').onclick = () => { readCF(); openRoom(); };
   const saved = ls.get(CFGS_KEY, []), codes = [...new Set(saved.map(x => x.code).concat(ls.get('tg_myrooms', [])).reverse())].slice(0, 8);
   const info = c => saved.find(x => x.code === c) || {};
   const md = t => { if(!t) return ''; const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`; };
@@ -2095,7 +2089,7 @@ function drawArgBox(){
     <div class="row" style="margin-top:6px">
       <label class="mini">근거 개수 <select id="aNR">${[1,2,3].map(v => `<option ${a.nR==v?'selected':''}>${v}</option>`).join('')}</select></label>
       <label class="mini" ${a.ev?'':'style="opacity:.45"'}>근거 하나당 증거 개수 <select id="aNE" ${a.ev?'':'disabled'}>${[1,2].map(v => `<option ${a.nE==v?'selected':''}>${v}</option>`).join('')}</select></label>
-</div>
+      <label class="mini">"왜" 사다리 단계 <select id="aLd">${[2,3,4,5].map(v => `<option ${a.ladder==v?'selected':''}>${v}</option>`).join('')}</select></label></div>
     <div class="lenset"><b class="mini">글자 수 기준</b> <span class="mini muted">— 띄어쓰기 빼고 <b>이 숫자보다 길게</b> 써야 다음 단계로 넘어가요 (0이면 제한 없음)</span>
       <div class="row" style="gap:10px;margin-top:4px;flex-wrap:wrap">
         <label class="mini" ${a.how === 'ask' ? '' : 'style="opacity:.45"'}>생각을 여는 질문의 답 <input type="number" class="t num" id="lQ" min="0" max="200" value="${a.minQ}">자</label>
@@ -2109,23 +2103,13 @@ function drawArgBox(){
     <label class="mini" style="display:block;margin-top:4px"><input type="radio" name="aHow" value="free" ${a.how==='free'?'checked':''}> ① 학생이 모든 요소를 직접 쓰기</label>
     <label class="mini" style="display:block"><input type="radio" name="aHow" value="pick" ${a.how==='pick'?'checked':''}> ② 선생님이 준 <b>근거 문장</b>에서 고르기 <span class="muted">(학생은 ‘기타’를 눌러 직접 쓸 수도 있어요)</span></label>
     <label class="mini" style="display:block"><input type="radio" name="aHow" value="ask" ${a.how==='ask'?'checked':''}> ③ 선생님이 준 <b>생각을 여는 질문</b>에 답하고, 그 답을 모아 학생이 근거를 직접 쓰기 <span class="muted">(생각 모으기 → 근거 묶기)</span></label>
-    ${a.how === 'free' ? `<label class="mini" style="display:block;margin:8px 0 0 22px"><input type="checkbox" id="aShowQ" ${a.showQ ? 'checked' : ''}> 생각을 여는 질문을 <b>참고용</b>으로 보여 주기 <span class="muted">(근거를 쓸 때 질문만 보여 줘요 — 질문에 답하거나 답을 모아 근거로 묶는 단계는 없어요)</span></label>` : ''}
     <div id="pickBox"></div>
-    <b style="display:block;margin-top:14px">‘왜’ 사다리</b>
-    <div class="row" style="gap:14px;margin-top:4px;align-items:center">
-      <label class="mini" ${a.how === 'pick' && !a.useLad ? 'style="opacity:.45"' : ''}><input type="checkbox" id="aLdOn" ${a.useLad ? 'checked' : ''}> 근거 쓰기에 ‘왜’ 사다리(💡 Tip) 넣기</label>
-      <label class="mini" ${a.useLad ? '' : 'style="opacity:.45"'}>단계 수 <select id="aLd" ${a.useLad ? '' : 'disabled'}>${[2,3,4,5].map(v => `<option ${a.ladder==v?'selected':''}>${v}</option>`).join('')}</select></label></div>
-    <div class="mini muted">①·③ 방식에서만 넣을 수 있어요. 넣으면 학생이 근거를 쓸 때 [💡 Tip] → [그래도 잘 모르겠어요]로 정한 단계만큼 “왜?”에 답해요.</div>
-    ${a.how === 'pick' && a.useLad ? '<div class="warnbox">② <b>근거 문장 고르기</b> 방식에는 ‘왜’ 사다리를 넣을 수 없어요. 위 체크를 풀어야 <b>[방 열기]</b>를 누를 수 있어요.</div>' : ''}
     <div class="mini muted" style="margin-top:10px">학생 의견 칸은 언제나 <b>붙여넣기가 막혀</b> 있습니다. 제출하면 학생이 스스로 근거·증거·반론을 점검하는 체크리스트가 뜹니다.</div>`;
   const re = () => { readCF(); drawArgBox(); };
-  $('aEv').onchange = re; $('aCr').onchange = re; $('aLdOn').onchange = re; if($('aShowQ')) $('aShowQ').onchange = re;
+  $('aEv').onchange = re; $('aCr').onchange = re;
   box.querySelectorAll('input[name="aHow"]').forEach(r => r.onchange = re);
-  if(a.how !== 'free' || a.showQ) drawPickBox();
-  updOpen();
+  if(a.how !== 'free') drawPickBox();
 }
-function updOpen(){ const b = $('open'); if(!b || !CF) return; const bad = CF.arg.how === 'pick' && CF.arg.useLad;
-  b.disabled = bad; b.title = bad ? '② 근거 문장 고르기 방식에는 ‘왜’ 사다리를 넣을 수 없어요' : ''; }
 function sideOpts(){ // 목록 항목에 붙일 입장 선택지
   if(CF.form === 'two') return [['','공통'],['A', CF.sideA || '왼쪽'],['B', CF.sideB || '오른쪽']];
   if(CF.form === 'scale') return [['','공통'],['A', (CF.scale.left || '왼쪽') + ' 쪽'],['B', (CF.scale.right || '오른쪽') + ' 쪽']];
@@ -2134,13 +2118,6 @@ function sideOpts(){ // 목록 항목에 붙일 입장 선택지
 function drawPickBox(){
   const a = CF.arg, box = $('pickBox'), so = sideOpts();
   const sel = (v, cls) => `<select class="t ${cls}">${so.map(([k,n]) => `<option value="${k}" ${v===k?'selected':''}>${esc(n)}</option>`).join('')}</select>`;
-  const qEdit = `<div id="qList">${a.qs.map(q => `<div class="lrow q"><input class="t qTx" maxlength="100" placeholder="질문을 써 주세요" value="${esc(q.q)}"><button class="btn sm del">✕</button></div>`).join('')}</div>
-    <button class="btn sm" id="qAdd">+ 질문 추가</button>`;
-  if(a.how === 'free'){ box.innerHTML = `<div class="mini" style="margin:10px 0 4px"><b>생각을 여는 질문 (참고용)</b> — 학생이 근거를 쓰는 화면 위에 목록으로 보여요(학생마다 순서 무작위). 답하는 칸은 없어요.</div>
-    <div class="mini muted" style="margin-bottom:4px">내용 대신 <b>관점</b>을 주는 질문이 좋아요. 예) 많은 사람이 오가는 곳에 서 있는 비석은 사람들에게 병자호란을 어떤 사건으로 기억하게 만들까?</div>${qEdit}`;
-    box.querySelectorAll('.del').forEach(b => b.onclick = () => { b.parentElement.remove(); readCF(); });
-    $('qAdd').onclick = () => { readCF(); CF.arg.qs.push({q:''}); drawPickBox(); };
-    return; }
   const top = a.how === 'ask'
     ? `<div class="mini" style="margin:10px 0 4px"><b>생각을 여는 질문</b> — 모든 입장의 학생에게 똑같이 나가고, 학생마다 <b>순서가 무작위</b>로 하나씩 나와요.</div>
     <div class="mini muted" style="margin-bottom:4px">어느 입장이든 답할 수 있게, 내용 대신 <b>관점</b>을 주세요. 앞 질문에 기대지 않고 혼자서도 뜻이 통하게 써 주세요. 예) 많은 사람이 오가는 곳에 서 있는 비석은 사람들에게 병자호란을 어떤 사건으로 기억하게 만들까?</div>
@@ -2170,8 +2147,7 @@ function readCF(){
   document.querySelectorAll('.mlab').forEach(el => CF.multi[+el.dataset.i].label = el.value.trim());
   document.querySelectorAll('.mcl').forEach(el => CF.multi[+el.dataset.i].claim = el.value.trim());
   if($('sSt')) CF.scale = {statement:v('sSt').trim(), left:v('sL').trim(), right:v('sR').trim(), max:+v('sMax'), claim:v('sCl').trim()};
-  if($('aEv')){ const a = CF.arg; a.ev = $('aEv').checked; a.cr = $('aCr').checked; a.nR = +v('aNR'); a.nE = +v('aNE'); a.ladder = +v('aLd') || a.ladder || 2;
-    if($('aLdOn')) a.useLad = $('aLdOn').checked; if($('aShowQ')) a.showQ = $('aShowQ').checked;
+  if($('aEv')){ const a = CF.arg; a.ev = $('aEv').checked; a.cr = $('aCr').checked; a.nR = +v('aNR'); a.nE = +v('aNE'); a.ladder = +v('aLd');
     const h = document.querySelector('input[name="aHow"]:checked'); a.how = h && HOWS.includes(h.value) ? h.value : 'free';
     if(!Array.isArray(a.qs)) a.qs = []; if(a.qAll == null) a.qAll = true;
     const numv = (id, d) => { const x = $(id) ? parseInt($(id).value, 10) : NaN; return isNaN(x) ? d : Math.max(0, Math.min(200, x)); };
@@ -2201,15 +2177,12 @@ async function openRoom(){
   }
   const a = c.arg;
   const how = HOWS.includes(a.how) ? a.how : 'free';
-  if(how === 'pick' && a.useLad) return toast('② 근거 문장 고르기 방식에는 ‘왜’ 사다리를 넣을 수 없어요 — 체크를 풀어 주세요');
-  const showQ = how === 'free' && !!a.showQ;
-  const arg = {ev:!!a.ev, cr:!!a.cr, nR:+a.nR || 1, nE:+a.nE || 1, ladder:+a.ladder || 2, useLad: how !== 'pick' && !!a.useLad, showQ, how,
+  const arg = {ev:!!a.ev, cr:!!a.cr, nR:+a.nR || 1, nE:+a.nE || 1, ladder:+a.ladder || 2, how,
     reasons: how === 'pick' ? arr(a.reasons).filter(r => r.text) : [], evidences: how !== 'free' && a.ev ? arr(a.evidences).filter(e => e.text) : [],
-    qs: how === 'ask' || showQ ? arr(a.qs).filter(q => q.q).map(q => ({q:q.q})) : [], qAll: a.qAll !== false,
+    qs: how === 'ask' ? arr(a.qs).filter(q => q.q).map(q => ({q:q.q})) : [], qAll: a.qAll !== false,
     minQ:a.minQ ?? 10, minR:a.minR ?? 15, minE:a.minE ?? 15, minC:a.minC ?? 15, minRb:a.minRb ?? 15};
   if(how === 'pick' && !arg.reasons.length) return toast('고르기 방식이면 근거 목록을 하나 이상 써 주세요');
   if(how === 'ask' && !arg.qs.length) return toast('질문 방식이면 생각을 여는 질문을 하나 이상 써 주세요');
-  if(showQ && !arg.qs.length) return toast('참고용 질문을 보여 주려면 생각을 여는 질문을 하나 이상 써 주세요');
   if(arg.how === 'pick' && arg.ev && !arg.evidences.length) return toast('고르기 방식이면 증거 목록도 하나 이상 써 주세요');
   if(arg.evidences.some(e => !e.src)) return toast('증거 목록의 출처를 모두 써 주세요');
   const split = mode === 'scale' ? 'pick' : c.split;
@@ -2295,7 +2268,6 @@ function hostDuties(prevP){
       if(R.r3score && R.r3score[old] != null) { patch['r3score.' + p.id] = R.r3score[old]; }
       if(Object.keys(patch).length) store.updateRoom(ROOM, patch); } });
   Object.entries(R.moves || {}).forEach(([id, t]) => { if(!P[id] || P[id].team === t) store.updateRoom(ROOM, {['moves.' + id]: {__op:'del'}}); });
-  Object.entries(R.smoves || {}).forEach(([id, sc]) => { if(!P[id] || P[id].score === sc) store.updateRoom(ROOM, {['smoves.' + id]: {__op:'del'}}); });
   if(prevP){ ps.forEach(p => { const o = prevP[p.id];
       if(!o) { feed(`${josa(showName(p),'이','가')} 들어왔습니다`); beep(880,.06); }
       else { if(!o.text && p.text) feed(`${josa(showName(p),'이','가')} 의견을 올렸습니다`);
@@ -2322,14 +2294,7 @@ function stuDuties(){
   const want = (R.moves || {})[UID];
   if(want && m.team !== want){ const patch = {team:want, x:posX(want)};
     if(m.arg) patch.text = composeText(m.arg, {...m, team:want});
-    if((R.phase === 'write' || R.phase === 'r1' || R.phase === 'r2') && !R.r3start){ patch.r3text = ''; patch.r3why = ''; }
-    store.updatePlayer(ROOM, UID, patch); toast(`선생님이 ${sideName(want)} 팀으로 옮겼어요`); return; }
-  const ws = (R.smoves || {})[UID];
-  if(ws != null && m.score !== ws){ const team = scoreTeam(ws), patch = {score:ws, team, x:Math.round(scoreX(ws))};
-    if(m.arg) patch.text = composeText(m.arg, {...m, score:ws, team});
-    if(!R.r3start){ patch.r3text = ''; patch.r3why = ''; }
-    store.updatePlayer(ROOM, UID, patch); toast(`선생님이 ${ws}점 자리로 되돌렸어요`); return; }
-  if((R.phase === 'write' || R.phase === 'r1' || R.phase === 'r2') && !R.r3start && (m.r3text || m.r3why)) store.updatePlayer(ROOM, UID, {r3text:'', r3why:''});
+    store.updatePlayer(ROOM, UID, patch); toast(`선생님이 ${sideName(want)} 팀으로 옮겼어요`); }
 }
 
 /* ───────── 광장 그리기 ───────── */
@@ -2440,7 +2405,7 @@ function hostView(){
   app.innerHTML = `${mockBanner()}
   <div class="row"><div class="grow"><span class="tag">${esc(R.grade)}학년 ${esc(R.cls)}반 · ${esc(R.subject)}</span><h2 class="topic">${esc(R.topic)}</h2></div>
     <div class="qrbox"><div id="qrSmall" title="눌러서 크게"></div><div><div class="mini muted">입장 코드</div><div class="code">${ROOM}</div><button class="btn sm" id="copyLink">링크 복사</button></div></div></div>
-  <div class="phasebar">${PHASES.map(([k,n],i) => `<span class="${i===ph?'on':i<ph?'back':''}" ${i<ph?`data-back="${k}" title="눌러서 이 단계로 돌아가기"`:''}>${n}</span>`).join('')}</div>
+  <div class="phasebar">${PHASES.map(([k,n],i) => `<span class="${i===ph?'on':''}">${n}</span>`).join('')}</div>
   <div class="hostgrid">
     <div>
       ${R.phase === 'r2' && m ? arenaHTML(true) : `<div class="board ${mode}" id="board" data-bg="${document.body.dataset.map}">${boardHTML()}</div>`}
@@ -2467,7 +2432,6 @@ function hostView(){
   let delArm = false; $('del').onclick = async () => { if(!delArm){ delArm = true; $('del').textContent = '정말 지웁니다 — 한 번 더 누르세요'; $('del').style.background = 'var(--bad)'; $('del').style.color = '#fff'; return; }
     $('del').textContent = '지우는 중…'; await store.deleteRoom(ROOM); if(unwatch) unwatch(); toast('방을 지웠습니다'); R = null; VIEW = 'home'; render(); };
   hostControls();
-  app.querySelectorAll('.phasebar [data-back]').forEach(el => el.onclick = () => backModal(el.dataset.back));
   const board = $('board');
   if(board) drawTokens(board, p => {
     if(mode !== 'scale' && (R.phase === 'write' || R.phase === 'r1')){ const i = ks.indexOf(p.team), to = ks[(i + 1) % ks.length]; store.updateRoom(ROOM, {['moves.' + p.id]: to}); toast(`${showName(p)} → ${sideName(to)} (학생 화면에서 반영)`); }
@@ -2501,42 +2465,6 @@ function hostControls(){
   }
   if(R.phase === 'r3') add('결과 보기', () => store.updateRoom(ROOM, {phase:'end', rEnd:0}));
   if(R.phase === 'end') add(R.reveal ? '이름 다시 가리기' : '이름 공개 · 개인 순위', () => store.updateRoom(ROOM, {reveal: !R.reveal}), R.reveal ? '' : 'pri');
-}
-/* ───────── 선생님: 지난 단계로 돌아가기 ───────── */
-function backModal(k){
-  const name = (PHASES.find(x => x[0] === k) || [])[1], i = PHASES.findIndex(x => x[0] === k), cur = PHASES.findIndex(x => x[0] === R.phase);
-  if(i < 0 || i >= cur) return;
-  const notes = [];
-  if(i <= 1 && cur >= 2) notes.push('2라운드 대표 대결은 처음부터 다시 합니다(대표를 다시 뽑고, 투표도 새로 받아요).');
-  if(i <= 2 && cur >= 3) notes.push(MODE() === 'scale' ? '3라운드에서 점수를 옮긴 학생은 원래 점수 자리로 돌아가고, 남긴 ‘바뀐 이유’는 지워집니다.' : '3라운드에서 건너간 학생은 원래 팀으로 돌아가고, 남긴 ‘바뀐 이유’는 지워집니다.');
-  if(k === 'write' || k === 'r1') notes.push('학생들이 쓴 의견과 받은 좋아요는 그대로 남아요.');
-  if(k === 'r2') notes.push('대표 대결은 3라운드로 넘어가기 직전 상태로 돌아가요.');
-  if(k === 'r3') notes.push('3라운드에서 학생들이 옮긴 자리는 그대로예요.');
-  notes.push('타이머는 멈춰 있어요. 필요하면 [+1분]을 눌러 주세요.');
-  const d = document.createElement('div'); d.className = 'modal';
-  d.innerHTML = `<div class="card" style="max-width:520px"><h3 style="margin:0 0 8px">‘${esc(name)}’ 단계로 돌아갈까요?</h3>
-    <ul class="mini" style="margin:0 0 12px 18px;padding:0;line-height:1.7">${notes.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
-    <div class="row"><div class="grow"></div><button class="btn" id="bkNo">취소</button><button class="btn pri" id="bkGo">돌아가기</button></div></div>`;
-  document.body.appendChild(d);
-  d.onclick = e => { if(e.target === d || e.target.id === 'bkNo') d.remove(); };
-  $('bkGo').onclick = async () => { $('bkGo').disabled = true; try{ await goBack(k); toast(`‘${name}’ 단계로 돌아왔어요`); }catch(e){ console.error(e); toast('돌아가지 못했어요. 다시 눌러 주세요'); } d.remove(); };
-}
-async function goBack(k){
-  const i = PHASES.findIndex(x => x[0] === k), cur = PHASES.findIndex(x => x[0] === R.phase);
-  const patch = {phase:k, rEnd:0};
-  if(i <= 2 && cur >= 3 && R.r3start){   // 3라운드에서 옮긴 자리 되돌리기 (학생 화면에서 반영)
-    players().forEach(p => {
-      if(MODE() === 'scale'){ const s0 = (R.r3score || {})[p.id]; if(s0 != null && p.score != null && p.score !== s0) patch['smoves.' + p.id] = s0; }
-      else { const t0 = R.r3start[p.id]; if(t0 && p.team && p.team !== t0) patch['moves.' + p.id] = t0; } });
-    patch.r3start = null; patch.r3score = null; patch.r2back = null;
-  }
-  if(i <= 1 && cur >= 2){ Object.assign(patch, {matches:[], mi:-1, res:{}, stage:'ready', si:0, vr:(R.vr || 0) + 1}); }
-  if(k === 'r2'){
-    if(!arr(R.matches).length){ return startR2(); }
-    const b = R.r2back || {}; Object.assign(patch, {stage:b.stage || 'reveal', mi:b.mi != null ? b.mi : Math.max(0, R.matches.length - 1), si:b.si || 0});
-  }
-  if(k === 'r3'){ if(!R.r3start) return startR3(); patch.stage = 'done'; }
-  await store.updateRoom(ROOM, patch);
 }
 async function startR2(){
   const pick = (t, n) => teamOf(t).filter(p => p.text).sort((a,b) => (b.likes||0) - (a.likes||0) || a.joinedAt - b.joinedAt).slice(0, n).map(p => p.id);
@@ -2576,8 +2504,7 @@ async function makeFinal(){
 }
 async function startR3(){
   const start = {}, sc = {}; players().forEach(p => { if(p.team) start[p.id] = p.team; if(p.score != null) sc[p.id] = p.score; });
-  const back = R.phase === 'r2' ? {stage:R.stage || 'reveal', mi:R.mi, si:R.si || 0} : (R.r2back || null);
-  await store.updateRoom(ROOM, {phase:'r3', r3start:start, r3score:sc, r2back:back, rEnd: now() + DUR.r3*1000, stage:'done'});
+  await store.updateRoom(ROOM, {phase:'r3', r3start:start, r3score:sc, rEnd: now() + DUR.r3*1000, stage:'done'});
 }
 function qrModal(url){
   const d = document.createElement('div'); d.className = 'modal';
@@ -2815,9 +2742,9 @@ function r3Modal(){
 }
 function voteUI(tm, m){
   const area = $('voteArea'); if(!area) return;
-  const vid = (R.vr ? R.vr + '-' : '') + R.mi + '_' + UID, mine = V[vid];
+  const vid = R.mi + '_' + UID, mine = V[vid];
   if(R.stage !== 'vote'){ area.innerHTML = ''; return; }
-  const cast = async pick => { try{ await store.setVote(ROOM, vid, {mi:R.mi, vr:R.vr || 0, pick, team:m.team || null, at:now()}); toast('넣었어요 — 익명입니다'); }catch(e){ toast('이미 넣었어요'); } };
+  const cast = async pick => { try{ await store.setVote(ROOM, vid, {mi:R.mi, pick, team:m.team || null, at:now()}); toast('넣었어요 — 익명입니다'); }catch(e){ toast('이미 넣었어요'); } };
   if(tm.multi){
     if(Object.values(tm.ids).includes(UID)){ area.innerHTML = '<p class="muted" style="text-align:center">나는 대표라 투표할 수 없어요.</p>'; return; }
     if(mine){ area.innerHTML = '<p style="text-align:center"><b>투표 완료</b> — 누가 어디에 넣었는지는 아무도 볼 수 없습니다.</p>'; return; }
@@ -2936,7 +2863,7 @@ function reasonStepHTML(m){
     const slots = WIZ.data.reasons.map((r, i) => `<div class="slot">${a.nR > 1 ? `<div class="slotno">근거 ${i + 1}${i ? ' — 앞에서 쓰지 않은 답을 골라 보세요' : ''}</div>` : ''}${askSlotHTML(m, r, i)}</div>`).join('');
     return `<div class="steplbl">근거(이유) — 모은 생각을 묶어 한 문장으로 만들어요</div>${slots}
       <div class="hint">근거는 ‘~기’로 끝나게 쓰세요. 예) 사람들이 ~을 기억할 수 있다 → <i>~이 남아 있어야 사람들이 ~을 기억할 수 있기</i></div>
-      ${ladOn(a) ? `<button class="btn sm" id="wTip">💡 Tip ${WIZ.tip ? '닫기' : ''}</button>${WIZ.tip ? tipHTML(m) : ''}` : ''}`;
+      <button class="btn sm" id="wTip">💡 Tip ${WIZ.tip ? '닫기' : ''}</button>${WIZ.tip ? tipHTML(m) : ''}`;
   }
   const opts = pick ? arr(a.reasons).map((r, i) => ({...r, i})).filter(r => !r.side || r.side === m.team) : [];
   const slots = WIZ.data.reasons.map((r, i) => {
@@ -2945,11 +2872,9 @@ function reasonStepHTML(m){
       <label class="opt ${r.pick === -1 ? 'on' : ''}"><input type="radio" name="rp${i}" data-rp="${i}" value="-1" ${r.pick === -1 ? 'checked' : ''}> 기타 — 내가 직접 쓰기</label></div>` : '';
     const frame = showFrame ? `<div class="frame"><b>${i ? '또 다른 이유는' : '그 이유는'}</b><textarea class="t" data-f="r.${i}" maxlength="120" ${pick && picked(r.pick) ? 'readonly' : ''} placeholder="예) 치욕의 역사도 잊으면 같은 일을 다시 겪을 수 있기">${esc(r.body)}</textarea><b>때문이다.</b></div>` : '';
     return `<div class="slot">${a.nR > 1 ? `<div class="slotno">근거 ${i + 1}</div>` : ''}${list}${frame}</div>`; }).join('');
-  const ref = refQ(a) ? `<div class="echo refq"><b>생각을 여는 질문</b> <span class="mini muted">— 근거를 쓰기 전에 떠올려 보세요 (답을 따로 쓰지 않아도 돼요)</span>
-    <ol>${myQs(m.team, UID).map(q => `<li>${esc(q.q)}</li>`).join('')}</ol></div>` : '';
-  return `<div class="steplbl">근거(이유) — 내 주장을 왜 하는지, 내가 중요하게 여기는 것</div>${ref}${slots}
+  return `<div class="steplbl">근거(이유) — 내 주장을 왜 하는지, 내가 중요하게 여기는 것</div>${slots}
     <div class="hint">‘~기’로 끝나게 쓰세요. 예) 잊으면 같은 일을 다시 겪을 수 있기 → <i>그 이유는 잊으면 같은 일을 다시 겪을 수 있기 때문이다.</i></div>
-    ${ladOn(a) ? `<button class="btn sm" id="wTip">💡 Tip ${WIZ.tip ? '닫기' : ''}</button>${WIZ.tip ? tipHTML(m) : ''}` : ''}`;
+    <button class="btn sm" id="wTip">💡 Tip ${WIZ.tip ? '닫기' : ''}</button>${WIZ.tip ? tipHTML(m) : ''}`;
 }
 function ladQ0(m){
   if(MODE() === 'scale') return `왜 ${m.score}점이야?`;
@@ -3139,7 +3064,6 @@ function diagItems(g, arg){
   const a = AC();
   if(g === 'reason'){
     const usedPick = a.how === 'pick' && arr(arg && arg.reasons).some(r => r && picked(r.pick));
-    const valHint = ladOn(a) ? '💡 Tip의 ‘왜’ 사다리로 내가 중요하게 여기는 것을 찾아보세요.' : refQ(a) ? '‘생각을 여는 질문’을 다시 읽고, 내가 가장 중요하게 여기는 것을 근거에 넣어 보세요.' : '“이게 왜 중요하지?”라고 스스로 물어보고, 그 대답을 근거에 넣어 보세요.';
     if(a.how === 'ask') return [
       ['qa', '질문에 답하며 모은 내 생각이 근거에 들어 있다.', '‘내 생각 모음’에서 답을 체크하고 [고른 답 가져오기]로 다시 묶어 보세요.'],
       ['value', '근거에 내가 무엇을 중요하게 여기는지 드러난다.', '‘가장 중요하게 생각하는 것’을 묻는 질문의 답을 근거에 넣어 보세요.'],
@@ -3150,11 +3074,11 @@ function diagItems(g, arg){
     return (usedPick ? [
       ['side', '내가 고른 근거가 내 주장과 같은 편이다.', '내 주장을 뒷받침하는 근거를 다시 골라 보세요.'],
       ['own', '고른 근거를 친구에게 내 말로 다시 설명할 수 있다.', '근거를 소리 내어 읽고 무슨 뜻인지 짝에게 설명해 보세요. 어렵다면 다른 근거를 고르거나 ‘기타’로 직접 써 보세요.'],
-      ['value', '근거에 내가 무엇을 중요하게 여기는지 드러난다. (예: 교훈, 자존심, 정확한 사실, 백성의 삶)', valHint]
+      ['value', '근거에 내가 무엇을 중요하게 여기는지 드러난다. (예: 교훈, 자존심, 정확한 사실, 백성의 삶)', '💡 Tip의 ‘왜’ 사다리로 내가 중요하게 여기는 것을 찾아보세요.']
     ] : [
       ['repeat', '근거가 주장을 그대로 되풀이하지 않는다. (✗ 보전해야 하는 이유는 보전이 중요하기 때문이다)', '내 주장에 ‘왜?’를 한 번 더 묻고, 그 대답을 근거로 써 보세요.'],
       ['feel', '‘좋다, 싫다, 화난다’ 같은 기분만 쓰지 않았다.', '기분 대신, 왜 그렇게 느끼는지 까닭을 써 보세요.'],
-      ['value', '근거에 내가 무엇을 중요하게 여기는지 드러난다. (예: 교훈, 자존심, 정확한 사실, 백성의 삶)', valHint],
+      ['value', '근거에 내가 무엇을 중요하게 여기는지 드러난다. (예: 교훈, 자존심, 정확한 사실, 백성의 삶)', '💡 Tip의 ‘왜’ 사다리로 내가 중요하게 여기는 것을 찾아보세요.'],
       ['why', '친구가 “왜?”라고 물으면 내 말로 설명할 수 있다.', '설명이 어렵다면 내가 이해한 쉬운 말로 바꿔 써 보세요.'],
       ['own', 'AI나 다른 사람의 글을 베끼지 않고 내 생각으로 썼다.', '서툴러도 괜찮아요. 내 생각으로 다시 써 주세요.']
     ]).map(x => [...x, 'reason']);
